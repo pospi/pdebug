@@ -18,15 +18,15 @@
 	 http://pospi.spadgos.com/projects/pPHPide
 
 	:NOTE: There should be *absolutely* no markup or even TEXT in this class! ALL markup /
-		   formatting to be generated through string substitution via configuration
-		   file, for easy configurability.
+			formatting to be generated through string substitution via configuration
+			file, for easy configurability.
 	----------------------------------------------------------------------------
 	Copyright (c) 2008 Sam Pospischil <pospi@spadgos.com>
   ===============================================================================*/
 
 if ($_PDEBUG_OPTIONS['use_debugger']) {
 
-	class PDebug {
+	abstract class PDebug {
 
 		//===============================
 		// layout vars
@@ -45,7 +45,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		static $STACK_FORMAT;			//	<li>Stack: <ul>
 			static $STACK_LINE;			// 		{<li>func_call(<ul>
 			static $STACK_JOINER;		// 			{
-				 // variables...   		// 				{<li>...</li>}
+				 // variables...		// 				{<li>...</li>}
 										//			,}
 										//		</ul>)</li>}
 										// 	</ul></li>
@@ -55,6 +55,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		static $OBJECT_FORMAT;			//	<li>Object (stdClass)<ul>
 			static $OBJECT_JOINER;		//	{
+			static $OBJECT_INDEX;		//
 			static $OBJECT_MEMBER;		//		{<li><ul>
 					// variables...		//			<li>member:scope</li>
 										// 			... you get the idea...
@@ -69,9 +70,10 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		static $ARRAY_FORMAT;			//	{<li>Array (# elements)<ul>
 			static $ARRAY_JOINER;		//		{
-			static $ARRAY_PAIR;			//		 {<li><ul>
-										//			{<li>key</li>}
-							   			//			{<li>simple value</li>}
+			static $ARRAY_KEY_NUMERIC;	//		 {<li><ul>
+			static $ARRAY_KEY_STRING;	//
+			static $ARRAY_VALUE;		//			{<li>key</li>}
+										//			{<li>simple value</li>}
 										//		</ul></li>}, }
 										//		{<li><ul>			this isn't a real type, just to illustrate substitutions
 										//			{<li>key</li>}
@@ -98,11 +100,12 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		static $FOOTER_BLOCK;			// </ul>
 
-		static $INDENT_STRING;			// don't want it indented? turn it off. bitch.
+		static $INDENT_STRING;
+		static $PADDING_CHARACTER;
 
 		static $VARIABLE_OUTPUT_FORMAT;	// <li></li>					:NOTE: common format used in dumping all simple datatypes
 
-		static $STARTUP_STATS_FORMAT;	   // format to output the startup statistics for pPHPide in. Disable by setting
+		static $STARTUP_STATS_FORMAT;		// format to output the startup statistics for pPHPide in. Disable by setting
 		static $INTERNAL_CALL_LOG_FORMAT;
 
 		static $COLLAPSED_STRING;
@@ -111,7 +114,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		static $DEBUGGER_STYLES 	= array(PProtocolHandler::MODE_TEXT => array(), PProtocolHandler::MODE_HTML => array(), PProtocolHandler::MODE_JSON => array());
 
-		static $INITIALISATION_LOG_STRING;  // holds initialisation log string accoring to the desired output format, for outputting later
+		static $INITIALISATION_LOG_STRING;	// holds initialisation log string accoring to the desired output format, for outputting later
 
 		static $CURRENT_INDENT_STRING = '';		// current indent level string to prepend to lines
 
@@ -126,6 +129,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		// Stack wildcards:
 		const WC_CLASS			= '%c';
+		const WC_OBJECT			= '%o';
 		const WC_CALL_TYPE		= '%t';
 		const WC_FUNC_NAME		= '%f';
 		const WC_STACK_ROW_COLOR = '%cs';
@@ -144,6 +148,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		const WC_TYPE 			= '%t';
 		const WC_VAR 			= '%v';
 		const WC_KEY 			= '%k';
+		const WC_KEY_PADDING	= '%p';
 		const WC_INFO 			= '%i';
 		const WC_STRING_LINES	= '%l';
 
@@ -172,8 +177,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		static $BENCHMARKER_COLOR_HIGH		= 0xFF0000;
 		static $BENCHMARKER_COLOR_LOW		= 0x00AA00;
 
-		static $STACK_COLOR_NEWEST  = 0xFFFF00;
-		static $STACK_COLOR_OLDEST  = 0x990000;
+		static $STACK_COLOR_NEWEST	= 0xFFFF00;
+		static $STACK_COLOR_OLDEST	= 0x990000;
 
 		//================================
 		// state vars
@@ -197,10 +202,10 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		/**
 		 *	Dumps a variable(s) information recursively
 		 *
-		 *  @param  bool	$force_show_trace	Toggle stack trace display
-		 *  @param  bool	$force_collapsed 	Force starting node status
-		 *  @param  bool	$short_format	   Force short variable dump format (use for inline variable debug output etc)
-		 *  @param  bool	$skip_headers	   If true, don't output debugger header / footer
+		 *	@param	bool	$force_show_trace	Toggle stack trace display
+		 *	@param	bool	$force_collapsed 	Force starting node status
+		 *  @param  bool	$short_format		Force short variable dump format (use for inline variable debug output etc)
+		 *  @param  bool	$skip_headers		If true, don't output debugger header / footer
 		 *
 		 *  @return string
 		 */
@@ -228,16 +233,18 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				PDebug::$START_COLLAPSED = (bool)$force_collapsed;
 			}
 
+			$num_vars = count($vars);
+			$line_pad_length = strlen($num_vars);
 			$i = 0;
 			foreach ($vars as $var) {
 				if ($do_numbering) {
-					$out .= str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, ++$i), PDebug::$VARIABLES_JOINER);
+					$out .= str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, str_pad(++$i, $line_pad_length, ' ', STR_PAD_LEFT)), PDebug::$VARIABLES_JOINER);
 				}
 				$out .= PDebug::getDebugFor($var, $short_format);
 			}
 
 			if ($do_numbering) {
-				$out .= str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, count($vars)), PDebug::$VARIABLES_FOOTER);
+				$out .= str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, $num_vars), PDebug::$VARIABLES_FOOTER);
 			}
 
 			PDebug::$START_COLLAPSED = $debug_last_collapsed;
@@ -267,13 +274,13 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			$out = PDebug::readableBacktrace($stack, true);
 
 			// print PDebug headers / footers if this is not an external (direct) function call
-		   	$header_extra = $footer_extra = '';
-		   	if (!$internal_call) {
+			$header_extra = $footer_extra = '';
+			if (!$internal_call) {
 				list($header_extra, $footer_extra) = PDebug::verifyHeaderIncludes(PDebug::$HEADER_BLOCK, PDebug::$FOOTER_BLOCK);
 				PDebug::goExternal($out, 'trace');
 			}
 
-		   	return $header_extra . $out . $footer_extra;
+			return $header_extra . $out . $footer_extra;
 		}
 
 		/**
@@ -286,14 +293,14 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 			$out = PDebug::formatBench($tag, PDebug::getBench(true), true, $vars);
 
-		   	// print PDebug headers / footers if this is not an external (direct) function call
-		   	$header_extra = $footer_extra = '';
-		   	if (!$internal_call) {
+			// print PDebug headers / footers if this is not an external (direct) function call
+			$header_extra = $footer_extra = '';
+			if (!$internal_call) {
 				list($header_extra, $footer_extra) = PDebug::verifyHeaderIncludes(PDebug::$HEADER_BLOCK, PDebug::$FOOTER_BLOCK);
 				PDebug::goExternal($out, 'bench');
 			}
 
-		   	return $header_extra . $out . $footer_extra;
+			return $header_extra . $out . $footer_extra;
 		}
 
 		/**
@@ -358,10 +365,11 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 			$i = 0;
 			$num_funcs = sizeof($stack);		// for row shading / colouring
+			$line_pad_length = strlen($num_funcs);
 
 			foreach ($stack as $hist => $data) {
 				if (!empty($data['class']) && $data['class'] == 'PDebug') {
-					$num_funcs--;			   // discount this one from the total number of function calls
+					$num_funcs--;				// discount this one from the total number of function calls
 					continue;
 				}
 
@@ -373,16 +381,21 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 							$func_arguments[$k] = PDebug::getDebugFor($arg, true);
 						}
 					}
+				} else {
+					$func_arguments[] = '...';
 				}
 
-				$color = PProtocolHandler::getColorBetween(array(0, PDebug::$STACK_COLOR_NEWEST), array($num_funcs, PDebug::$STACK_COLOR_OLDEST), $i++);
+				$color = PProtocolHandler::Color_getColorBetween(array(0, PDebug::$STACK_COLOR_NEWEST), array($num_funcs, PDebug::$STACK_COLOR_OLDEST), $i++);
 
 				$out .= str_replace(
-					array(PDebug::WC_INDENT, PDebug::WC_INFO, PDebug::WC_STACK_ROW_COLOR,
+					array(PDebug::WC_INDENT, PDebug::WC_INFO, PDebug::WC_STACK_ROW_COLOR, PDebug::WC_OBJECT,
 						  PDebug::WC_PATH, PDebug::WC_CLASS, PDebug::WC_CALL_TYPE, PDebug::WC_FUNC_NAME, PDebug::WC_SUBITEM),
 					array(
-						PDebug::$CURRENT_INDENT_STRING, $i, $color,
-						(isset($data['file']) ? PProtocolHandler::translatePathsIn($data['file'], $data['line']) : ''),
+						PDebug::$CURRENT_INDENT_STRING,
+						str_pad($i, $line_pad_length, ' ', STR_PAD_LEFT),
+						$color,
+						(isset($data['object'])	? PDebug::getDebugFor($data['object'], true) : ''),
+						(isset($data['file']) ? PProtocolHandler::String_translatePathsFor($data['file'], $data['line']) : ''),
 						(isset($data['class'])	? $data['class'] : ''),
 						(isset($data['type'])	? $data['type']	 : ''),
 						$data['function'],
@@ -391,22 +404,16 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					PDebug::$STACK_LINE);
 			}
 
-			$header_extra = $footer_extra = '';
-			$stack_bits = explode(PDebug::WC_SUBITEM, PDebug::$STACK_FORMAT);
-			if (sizeof($stack_bits) == 2) {
-				$header_extra = $stack_bits[0];
-				$footer_extra = $stack_bits[1];
-			}
+			$out = str_replace(PDebug::WC_SUBITEM, $out, PDebug::$STACK_FORMAT);
 
-		   	// print PDebug headers / footers if this is not an external (direct) function call
-		   	if (!$internal_call) {
-		   		$header_extra = PDebug::$HEADER_BLOCK . $header_extra;
-		   		$footer_extra .= PDebug::$FOOTER_BLOCK;
-				list($header_extra, $footer_extra) = PDebug::verifyHeaderIncludes($header_extra, $footer_extra);
+			// print PDebug headers / footers if this is not an external (direct) function call
+			$header_extra = $footer_extra = '';
+			if (!$internal_call) {
+				list($header_extra, $footer_extra) = PDebug::verifyHeaderIncludes(PDebug::$HEADER_BLOCK, PDebug::$FOOTER_BLOCK);
 				PDebug::goExternal($out, 'trace');
 			}
 
-		   	return $header_extra . $out . $footer_extra;
+			return $header_extra . $out . $footer_extra;
 		}
 
 		/**
@@ -438,16 +445,20 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			$var_extra = array();
 			if (is_array($dump_vars)) {
 				foreach ($dump_vars as $var) {
-					$var_extra[] = PDebug::getDebugFor($var, true);
+					$var_extra[] = PDebug::getDebugFor($var, PProtocolHandler::isOutputtingHtml());
 				}
 			}
 			$var_extra = implode(PDebug::$STACK_JOINER, $var_extra);
 
-			// few levels up the stack to get the the first external call
-			$trace_index = $internal_call ? 2 : 1;
-			$give_up_after = 10;
-			while (!isset($trace[$trace_index]['file']) && --$give_up_after > 0) {
+			// go back up the stack to get the the first external call
+			$trace_index = 0;
+			while (isset($trace[$trace_index]) && ( (isset($trace[$trace_index]['class']) && $trace[$trace_index]['class'] == 'PDebug') || !isset($trace[$trace_index]['file']) )) {
 				$trace_index++;
+			}
+
+			$trace_call_location_string = '';
+			if (isset($trace[$trace_index]['file'])) {
+			    $trace_call_location_string = PProtocolHandler::String_translatePathsFor($trace[$trace_index]['file'], $trace[$trace_index]['line']);
 			}
 
 			$out = str_replace(
@@ -458,7 +469,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					array(
 						PDebug::$CURRENT_INDENT_STRING,
 						$tag,
-						PProtocolHandler::translatePathsIn($trace[$trace_index]['file'], $trace[$trace_index]['line']),
+						$trace_call_location_string,
 						$this_call, $mem_usage, $time_diff, $mem_diff,
 						$this_call_c, $mem_usage_c, $time_diff_c, $mem_diff_c,
 						$var_extra,
@@ -466,20 +477,19 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					),
 					($diffs_only ? PDebug::$INTERNAL_CALL_LOG_FORMAT : PDebug::$BENCH_FORMAT));
 
-		   	// print PDebug headers / footers if this is not an external (direct) function call
-		   	$header_extra = $footer_extra = '';
-		   	if (!$internal_call) {
+			// print PDebug headers / footers if this is not an external (direct) function call
+			$header_extra = $footer_extra = '';
+			if (!$internal_call) {
 				list($header_extra, $footer_extra) = PDebug::verifyHeaderIncludes(PDebug::$HEADER_BLOCK, PDebug::$FOOTER_BLOCK);
 				PDebug::goExternal($out, 'bench');
 			}
-
-		   	return $header_extra . $out . $footer_extra;
+			return $header_extra . $out . $footer_extra;
 		}
 
 		//====================================================================================================================================
 
 		public static function __shadedMem($usage) {
-			$color = PProtocolHandler::getColorBetween(array(PDebug::$BENCHMARKER_MEM_VALUE_LOW, PDebug::$BENCHMARKER_COLOR_LOW), array(PDebug::$BENCHMARKER_MEM_VALUE_HIGH, PDebug::$BENCHMARKER_COLOR_HIGH), $usage);
+			$color = PProtocolHandler::Color_getColorBetween(array(PDebug::$BENCHMARKER_MEM_VALUE_LOW, PDebug::$BENCHMARKER_COLOR_LOW), array(PDebug::$BENCHMARKER_MEM_VALUE_HIGH, PDebug::$BENCHMARKER_COLOR_HIGH), $usage);
 
 			$usage = number_format($usage / 1024, 3, '.', '');
 			if ($usage > 0) {
@@ -490,7 +500,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		}
 
 		public static function __shadedTime($time) {
-			$color = PProtocolHandler::getColorBetween(array(PDebug::$BENCHMARKER_TIME_VALUE_LOW, PDebug::$BENCHMARKER_COLOR_LOW), array(PDebug::$BENCHMARKER_TIME_VALUE_HIGH, PDebug::$BENCHMARKER_COLOR_HIGH), $time);
+			$color = PProtocolHandler::Color_getColorBetween(array(PDebug::$BENCHMARKER_TIME_VALUE_LOW, PDebug::$BENCHMARKER_COLOR_LOW), array(PDebug::$BENCHMARKER_TIME_VALUE_HIGH, PDebug::$BENCHMARKER_COLOR_HIGH), $time);
 
 			$time = number_format($time, 6, '.', '');
 			if ($time > 0) {
@@ -525,6 +535,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				PDebug::$LAST_CALL_TIME = microtime(true);
 				PDebug::$LAST_MEM_USAGE	= memory_get_usage();
 			}
+			PDebug::$PDEBUG_LOOP_COUNT = 0;
 		}
 
 		private static function goExternal(&$out = null, $tag = '') {
@@ -551,12 +562,18 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			}
 		}
 
-		private static function increaseIndent() {
-			PDebug::$CURRENT_INDENT_STRING .= PDebug::$INDENT_STRING;
+		private static function increaseIndent($add = null) {
+			if ($add === null) {
+				$add = PDebug::$INDENT_STRING;
+			}
+			PDebug::$CURRENT_INDENT_STRING .= $add;
 		}
 
-		private static function decreaseIndent() {
-			PDebug::$CURRENT_INDENT_STRING = substr(PDebug::$CURRENT_INDENT_STRING, 0, strlen(PDebug::$INDENT_STRING) * -1);
+		private static function decreaseIndent($remove = null) {
+			if ($remove === null) {
+				$remove = PDebug::$INDENT_STRING;
+			}
+			PDebug::$CURRENT_INDENT_STRING = substr(PDebug::$CURRENT_INDENT_STRING, 0, strlen($remove) * -1);
 		}
 
 		private static function refreshThemes() {
@@ -581,7 +598,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 * separately in each debug_* function. Plus, it cuts down on needless type checks by ensuring
 		 * we only do it once for each variable.
 		 *
-		 *  @param	  array		ref_chain   array of all previously dumped vars (avoids recursion)
+		 *  @param		array		ref_chain	array of all previously dumped vars (avoids recursion)
 		 */
 		private static function getDebugFor($var, $short_format = false, &$ref_chain = null) {
 			PDebug::sanityCheck();
@@ -593,7 +610,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			} else if (is_array($var)) {
 				$out = PDebug::debug_array($var, $short_format, $ref_chain);
 			} else if (is_resource($var)) {
-				$out = PDebug::debug_resource($var, $short_format);
+				$out = PDebug::debug_resource($var, $short_format, $ref_chain);
 			} else {
 				$out = PDebug::debug_var($var, $short_format);
 			}
@@ -609,9 +626,9 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 *  Debugging for resource datatypes, since PHP performs no debugging for these types itself.
 		 *  Implementation for each custom resource type to be added as deemed necessary.
 		 *
-		 *  @param	  resource		var	 	the resource to debug
+		 *  @param		resource		var	 	the resource to debug
 		 */
-		private static function debug_resource($var, $short_format = false) {
+		private static function debug_resource($var, $short_format = false, &$ref_chain = null) {
 
 			PDebug::increaseIndent();
 
@@ -650,8 +667,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		/**
 		 *  Special debug case for objects - output all relevant data.
 		 *
-		 *  @param	  object	var		 	the object to debug
-		 *  @param	  array		ref_chain   array of all previously dumped vars (avoids recursion)
+		 *  @param		object	var		 	the object to debug
+		 *  @param		array		ref_chain	array of all previously dumped vars (avoids recursion)
 		 */
 		private static function debug_object($var, $short_format = false, &$ref_chain = null) {
 
@@ -674,6 +691,10 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			// cast to array to iterate over private properties
 			$avar = (array)$var;
 
+			// work out the longest object member string for plaintext padding
+			$val_pad_length = 0;
+			$type_pad_length = 0;
+
 			$obj_contents = array();
 			foreach ($avar as $key => $val) {
 
@@ -684,14 +705,33 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					$key_type = ($key_parts[1] == '*') ? 'protected' : 'private';
 				}
 
-				$value_dbg  = PDebug::getDebugFor($val, $short_format, $ref_chain);
+				$key_display_length = strlen($key);
+				$key_type_display_length = strlen($key_type);
+				if ($val_pad_length < $key_display_length) {
+					$val_pad_length = $key_display_length;
+				}
+				if ($type_pad_length < $key_type_display_length) {
+					$type_pad_length = $key_type_display_length;
+				}
 
-				$obj_contents[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY, PDebug::WC_INFO, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $key, $key_type, $value_dbg), PDebug::$OBJECT_MEMBER);
+				$obj_contents[] = array($key, $key_type, $val);
 			}
 
-			array_pop($ref_chain);
+			foreach ($obj_contents as $idx => $member_tuple) {
+
+				if (PDebug::$PADDING_CHARACTER) {
+					$member_tuple[0] = $member_tuple[0] . str_repeat(PDebug::$PADDING_CHARACTER, ($val_pad_length - strlen($member_tuple[0])));
+					$member_tuple[1] = str_repeat(PDebug::$PADDING_CHARACTER, ($type_pad_length - strlen($member_tuple[1]))) . $member_tuple[1];
+				}
+
+				$obj_contents[$idx] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, $member_tuple[0], $member_tuple[1]), PDebug::$OBJECT_INDEX)
+									. str_replace(array(PDebug::WC_INDENT, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, PDebug::getDebugFor($member_tuple[2], $short_format, $ref_chain)), PDebug::$OBJECT_MEMBER);
+			}
 
 			$compress = PDebug::$START_COLLAPSED || $short_format || sizeof($obj_contents) == 0;
+
+			// this MUST be done *after* all previous recursed calls are complete or the server will explode when it encounters a recursive reference
+			array_pop($ref_chain);
 
 			PDebug::decreaseIndent();
 
@@ -701,8 +741,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		/**
 		 *  Special debug case for arrays - recursively output all relevant data.
 		 *
-		 *  @param	  array	   	var			the array to recursively debug
-		 *  @param	  array		ref_chain	array of all previously dumped vars (avoids recursion)
+		 *  @param		array		var			the array to recursively debug
+		 *  @param		array		ref_chain	array of all previously dumped vars (avoids recursion)
 		 */
 		private static function debug_array($var, $short_format = false, &$ref_chain = null) {
 
@@ -721,12 +761,56 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				$var_type = str_pad(strtoupper('Array'), 7, ' ', STR_PAD_RIGHT);
 			}
 
-			$arr_contents = array();
-			foreach ($var as $k => $v) {
-				$key_dbg	= PDebug::getDebugFor($k, $short_format, $ref_chain);
-				$value_dbg  = PDebug::getDebugFor($v, $short_format, $ref_chain);
+			// length offsets for numeric / string keys, based on template extra
+			$numeric_key_extra	= PProtocolHandler::String_getDisplayWidth(str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY), array('', ''), PDebug::$ARRAY_KEY_NUMERIC));
+			$string_key_extra	= PProtocolHandler::String_getDisplayWidth(str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY), array('', ''), PDebug::$ARRAY_KEY_STRING));
 
-				$arr_contents[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $key_dbg, $value_dbg), PDebug::$ARRAY_PAIR);
+			// work out the longest array key string for plaintext padding
+			$max_string_length = 0;
+			$max_numeric_length = 0;
+
+			$arr_contents = array();
+			$contains_string_keys = false;
+			$contains_numeric_keys = false;
+			foreach ($var as $k => $v) {
+
+				$line_length = strlen($k);
+				$key_is_string = is_string($k);
+
+				if ($key_is_string) {
+					$contains_string_keys = true;
+					if ($max_string_length < $line_length) {
+						$max_string_length = $line_length;
+					}
+				} else {
+					$contains_numeric_keys = true;
+					if ($max_numeric_length < $line_length) {
+						$max_numeric_length = $line_length;
+					}
+				}
+
+				$arr_contents[] = array($k, $v, ($key_is_string ? PDebug::$ARRAY_KEY_STRING : PDebug::$ARRAY_KEY_NUMERIC));
+			}
+
+			$line_pad_length	= max($max_string_length, $max_numeric_length);
+			$strings_longer		= $max_string_length > $max_numeric_length;
+
+			$numeric_array = !$contains_string_keys;
+
+			$this_line_padding = "";
+			foreach ($arr_contents as $idx => $array_pair_info) {
+				if (PDebug::$PADDING_CHARACTER) {
+					$this_pad_length = $line_pad_length;
+					if (is_string($array_pair_info[0])) {
+						$this_pad_length += $contains_numeric_keys && !$strings_longer ? ($numeric_key_extra - $string_key_extra) : 0;
+					} else {
+						$this_pad_length += $contains_string_keys && $strings_longer ? ($string_key_extra - $numeric_key_extra) : 0;
+					}
+					$this_line_padding = str_repeat(($numeric_array ? ' ' : PDebug::$PADDING_CHARACTER), $this_pad_length - strlen($array_pair_info[0]));
+				}
+
+				$arr_contents[$idx] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY_PADDING, PDebug::WC_KEY), array(PDebug::$CURRENT_INDENT_STRING, $this_line_padding, $array_pair_info[0]), $array_pair_info[2])
+									. str_replace(array(PDebug::WC_INDENT, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, PDebug::getDebugFor($array_pair_info[1], false, $ref_chain)), PDebug::$ARRAY_VALUE);
 			}
 
 			$arr_size = sizeof($var);
@@ -744,8 +828,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 *  I've chosen to output warnings if anything else gets in here, because getDebugFor() should
 		 *  handle switching for all other cases.
 		 *
-		 *  @param	  mixed	   	 var			the variable to debug
-		 *  @param	bool	   short_format   whether or not to output in brief format (as in stack)
+		 *  @param		mixed		 var			the variable to debug
+		 *  @param	bool		short_format	whether or not to output in brief format (as in stack)
 		 */
 		private static function debug_var($var, $short_format = false) {
 
@@ -772,14 +856,14 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				preg_match_all(PProtocolHandler::$LINE_ENDING_REGEX, $var, $line_count, PREG_PATTERN_ORDER);
 				$line_count = sizeof($line_count[0]) + 1;		// total matches of whole pattern
 
-				$modified_var = PProtocolHandler::htmlSafeString($var);
+				$modified_var = PProtocolHandler::String_htmlSafe($var);
 				if ($short_format) {
 					$modified_var = strlen($modified_var) > 20 ? substr($modified_var, 0, 20) . '...' : $modified_var;
 					$modified_var = preg_replace(PProtocolHandler::$LINE_ENDING_REGEX, '', $modified_var);
 				}
 
 				if (PProtocolHandler::$TRANSLATE_STRING_PATHS_IN_HTML) {
-					$modified_var = PProtocolHandler::translatePathsInString($modified_var);
+					$modified_var = PProtocolHandler::String_translatePathsIn($modified_var);
 				}
 				$var_type = 'string';
 			} else {
@@ -797,14 +881,15 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				return str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $var_type, $modified_var), PDebug::$VARIABLE_OUTPUT_FORMAT);
 			} else {
 				if ($short_format || $line_count == 1) {
-					return str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO,	PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $string_length, $modified_var), PDebug::$SINGLELINE_STRING_FORMAT);
+					return str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO,	PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $string_length, PProtocolHandler::String_htmlSafe($var)), PDebug::$SINGLELINE_STRING_FORMAT);
 				} else {
 					PDebug::increaseIndent();
 
-					$modified_var = PProtocolHandler::getStringLines($modified_var);
+					$line_pad_length = strlen($line_count);
+					$modified_var = PProtocolHandler::String_getLines($modified_var);
 					$string_lines = array();
 					foreach ($modified_var as $line => $text) {
-						$string_lines[$line] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_COUNTER, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $line, $text), PDebug::$MULTILINE_STRING_LINE);
+						$string_lines[$line] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_COUNTER, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, str_pad($line, $line_pad_length, ' ', STR_PAD_LEFT), $text), PDebug::$MULTILINE_STRING_LINE);
 					}
 
 					PDebug::decreaseIndent();
@@ -825,7 +910,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				return;
 			}
 
-			$arg_list	  = func_get_args();
+			$arg_list		= func_get_args();
 
 			$type			= $arg_list[0];
 			$error_message	= $arg_list[1];
@@ -849,21 +934,21 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			}*/
 
 			$error_types = array (
-					   E_ERROR				=> 'ERROR',
-					   E_WARNING			=> 'WARNING',
-					   E_NOTICE				=> 'NOTICE',
-					   E_STRICT				=> 'STRICT NOTICE',
+						E_ERROR				=> 'ERROR',
+						E_WARNING			=> 'WARNING',
+						E_NOTICE			=> 'NOTICE',
+						E_STRICT			=> 'STRICT NOTICE',
 
-					   E_PARSE			 	=> 'PARSING ERROR',
-					   E_CORE_ERROR			=> 'CORE ERROR',
-					   E_CORE_WARNING		=> 'CORE WARNING',
-					   E_COMPILE_ERROR		=> 'COMPILE ERROR',
-					   E_COMPILE_WARNING	=> 'COMPILE WARNING',
-					   E_USER_ERROR			=> 'USER ERROR',
-					   E_USER_WARNING		=> 'USER WARNING',
-					   E_USER_NOTICE		=> 'USER NOTICE',
-					   E_RECOVERABLE_ERROR  => 'RECOVERABLE ERROR',
-				  );
+						E_PARSE			 	=> 'PARSING ERROR',
+						E_CORE_ERROR		=> 'CORE ERROR',
+						E_CORE_WARNING		=> 'CORE WARNING',
+						E_COMPILE_ERROR		=> 'COMPILE ERROR',
+						E_COMPILE_WARNING	=> 'COMPILE WARNING',
+						E_USER_ERROR		=> 'USER ERROR',
+						E_USER_WARNING		=> 'USER WARNING',
+						E_USER_NOTICE		=> 'USER NOTICE',
+						E_RECOVERABLE_ERROR => 'RECOVERABLE ERROR',
+					);
 
 			// create error message
 			if (array_key_exists($type, $error_types)) {
@@ -872,7 +957,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				$err = 'CAUGHT EXCEPTION';
 			}
 
-			$err_msg = str_replace(array(PDebug::WC_INDENT, PDebug::WC_ERROR, PDebug::WC_PATH, PDebug::WC_ERROR_MESSAGE, PDebug::WC_COUNTER), array(PDebug::$CURRENT_INDENT_STRING, $err, PProtocolHandler::translatePathsIn($file_name, $line_number), $error_message, PDebug::$ERROR_COUNT++), PDebug::$ERROR_FORMAT);
+			$err_msg = str_replace(array(PDebug::WC_INDENT, PDebug::WC_ERROR, PDebug::WC_PATH, PDebug::WC_ERROR_MESSAGE, PDebug::WC_COUNTER), array(PDebug::$CURRENT_INDENT_STRING, $err, PProtocolHandler::String_translatePathsFor($file_name, $line_number), $error_message, PDebug::$ERROR_COUNT++), PDebug::$ERROR_FORMAT);
 
 			// pretend we're from a backtrace call so we don't get headers output
 			$trace = PDebug::$USE_STACK_TRACE ? PDebug::trace(true) : '';

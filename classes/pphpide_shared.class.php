@@ -11,7 +11,7 @@
 	Copyright (c) 2008 Sam Pospischil <pospi@spadgos.com>
   ===============================================================================*/
 
-	class PProtocolHandler {
+	abstract class PProtocolHandler {
 
 		// output modes
 		const MODE_TEXT = 'text';
@@ -40,11 +40,15 @@
 
 		static $OUTPUT_HTML_AS_PLAIN = false;	// true if outputting plaintext data in HTML mode (config hack for end user simplicity)
 
+	//=====================================================================================================================
+	// String Functions
+	//=====================================================================================================================
+
 		/**
 		 * Translates a server path to a client path, to link your live application to your local dev codebase via
 		 * IDE protocol handling
 		 */
-		public static function translatePathsIn($server_path = '', $line = null) {
+		public static function String_translatePathsFor($server_path = '', $line = null) {
 			if (!$server_path) {
 				if (PProtocolHandler::$APP_ROOT) {
 					$server_path = PProtocolHandler::$APP_ROOT;
@@ -73,7 +77,7 @@
 		 * :NOTE: separating this function removes the overhead for path detection in normal path situations
 		 *		  where no parsing is required
 		 */
-		public static function translatePathsInString($string) {
+		public static function String_translatePathsIn($string) {
 			if (PProtocolHandler::isOutputtingHtml() && PProtocolHandler::$APP_ROOT) {   // cant really do anything if we don't know the app root path...
 				$path = $line = null;
 
@@ -121,7 +125,7 @@
 								}
 							}
 
-							$match_string .= PProtocolHandler::translatePathsIn($path, $line);
+							$match_string .= PProtocolHandler::String_translatePathsFor($path, $line);
 						}
 					}
 					return $match_string;
@@ -130,11 +134,8 @@
 			return $string;
 		}
 
-		//================================================================================================
-
 		// format string, escaped for html... if required
-
-		public static function htmlSafeString($string, $allow_br = false) {
+		public static function String_htmlSafe($string, $allow_br = false) {
 			if (PProtocolHandler::isOutputtingHtml()) {
 				$string = htmlentities($string);
 				if ($allow_br) {
@@ -144,24 +145,13 @@
 			return $string;
 		}
 
-		// format string, escaped for html attribute tag... if required
-
-		public static function encodeHtmlAttribute($string) {
-			if (PProtocolHandler::isOutputtingHtml()) {
-				$replacements = array(
-					'&'		=> '&amp;',		// lazy, but.. just do this one first, okay?
-					'  ' 	=> ' &nbsp;',
-					'<'		=> '&lt;',
-					'>'		=> '&gt;',
-					'"'		=> '&quot;',
-				);
-				$string = str_replace(array_keys($replacements), array_values($replacements), $string);
-			}
-			return $string;
+		// format string, escaped for insertion into regular expression
+		public static function String_escapeForRegex($string) {
+			return addcslashes($string, '\\/^.$|()[]*+?{}-');
 		}
 
 		// line breaking function using regexes to detect multiple line-ending types automatically
-		public static function getStringLines($string) {
+		public static function String_getLines($string) {
 
 			$parts = preg_split(PProtocolHandler::$LINE_ENDING_REGEX, $string, -1, PREG_SPLIT_DELIM_CAPTURE);
 
@@ -179,11 +169,11 @@
 						++$line_num;
 
 						// set the text for the next line to include the newline (so copy/pasting is ok in HTML mode)
-						if (PProtocolHandler::isOutputtingHtml() && !PProtocolHandler::$OUTPUT_HTML_AS_PLAIN) {
+						/*if (PProtocolHandler::isOutputtingHtml() && !PProtocolHandler::$OUTPUT_HTML_AS_PLAIN) {
 							$line = $piece;
-						} else {
+						} else {*/
 							$line = '';
-						}
+						//}
 
 						$last_was_newline = true;	// flag that this was a newline in case the next one is too
 						continue;
@@ -200,9 +190,27 @@
 			return $string_lines;
 		}
 
-		//================================================================================================
+		public static function String_getDisplayWidth($string) {
+			$lines = PProtocolHandler::String_getLines($string);
 
-		public static function getHexString($hex) {
+			$escape = PProtocolHandler::isOutputtingHtml();
+
+			$maxw = 0;
+			foreach ($lines as $line) {
+				$len = $escape ? strlen(html_entity_decode(strip_tags($line))) : strlen($line);
+				if ($len > $maxw) {
+					$maxw = $len;
+				}
+			}
+
+			return $maxw;
+		}
+
+	//=====================================================================================================================
+	// Color Functions
+	//=====================================================================================================================
+
+		public static function Color_getHexString($hex) {
 			$return = sprintf('%X', $hex);
 			$return = '#' . str_pad($return, 6, '0', STR_PAD_LEFT);
 			return $return;
@@ -215,11 +223,11 @@
 		 * @param array	$high	= [(mixed)max_value, (int)max_color]
 		 * @param mixed	$value	the value between min_value and max_value to base the shade on
 		 */
-		public static function getColorBetween($low, $high, $value) {
+		public static function Color_getColorBetween($low, $high, $value) {
 
 			$low_val = $low[0];
 			$low = $low[1];
-			$high_val = $high[0];
+			$high_val = $high[0] > 0 ? $high[0] - 1 : $high[0];
 			$high = $high[1];
 
 			// clamp the value, first
@@ -253,10 +261,11 @@
 
 			$hex = ($components['r']['final'] << 16) | ($components['g']['final'] << 8) | $components['b']['final'];
 
-			return PProtocolHandler::getHexString($hex);
+			return PProtocolHandler::Color_getHexString($hex);
 		}
 
-		//================================================================================================
+	//=====================================================================================================================
+	//=====================================================================================================================
 
 		public static function outputAs($mode) {
 			switch (strval($mode)) {

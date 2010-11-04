@@ -66,13 +66,9 @@
 		unset($pphpide_init_start_time);
 		unset($pphpide_init_start_mem);
 
-		// output initialisation stats, or if we are loading before page headers have been sent, we defer to output at script termination
+		// we defer loading statistics to output at script termination
 		if (PDebug::$STARTUP_STATS_FORMAT) {
-			if (headers_sent()) {
-				PDebug::__printInitStats();
-			} else {
-				register_shutdown_function(array(PDebug, '__printInitStats'));
-			}
+			register_shutdown_function(array(PDebug, '__printInitStats'));
 		}
 
 	} else {

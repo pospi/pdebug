@@ -13,27 +13,18 @@
 	// retrieve stream metadata first
 	$stream_meta = stream_get_meta_data($var);
 	foreach ($stream_meta as $key => $value) {
+		// check based on length of final debugged var output
+		$meta_debug = PDebug::getDebugFor($value, false, $ref_chain);
+
+		$value_width = PProtocolHandler::String_getDisplayWidth($meta_debug);
+		$key_width = PProtocolHandler::String_getDisplayWidth($key);
 
 		// store max column lengths
-		if (!isset($column_lengths[0]) || $column_lengths[0] < strlen($key)) {
-			$column_lengths[0] = strlen($key);
+		if (!isset($column_lengths[0]) || $column_lengths[0] < $key_width) {
+			$column_lengths[0] = $key_width;
 		}
-		// check based on length of final debugged var output
-		$meta_debug = PDebug::getDebugFor($value);
-		$longest_debug_line = 0;
-		$meta_debug_lines = PProtocolHandler::getStringLines($meta_debug);
-		foreach ($meta_debug_lines as $line) {
-			if (PProtocolHandler::$OUTPUT_HTML_AS_PLAIN) {
-				// if outputting plaintext into HTML, file links will still work so we need to get the display width
-				$line = strip_tags($line);
-			}
-			if ($longest_debug_line < strlen($line)) {
-				$longest_debug_line = strlen($line);
-			}
-		}
-
-		if (!isset($column_lengths[1]) || $column_lengths[1] < $longest_debug_line) {
-			$column_lengths[1] = $longest_debug_line;
+		if (!isset($column_lengths[1]) || $column_lengths[1] < $value_width) {
+			$column_lengths[1] = $value_width;
 		}
 
 		$row = array($key, $meta_debug);

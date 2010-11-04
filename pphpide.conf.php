@@ -4,79 +4,27 @@
 	----------------------------------------------------------------------------
 	[ pPHPide configuration vars ]
 
-	Some configuration options are for IDE protocol handling support for seamless
-	debugging, @see http://pospi.spadgos.com/projects/pPHPide
-
 	Version History:
-		3.0a -	Internal alpha phase test releases
-				Complete code rewrite
-				Drastic performance improvements, precomputed string substitution etc
-				OOP design methodology
-				Added protocol handling support for IDE integration
-				Created shared behaviour class, for path portability
-				Moved to external config file and more stable codebase
-				Simplified integration - single include & abstracted configuration
-				Debugger:
-				- Theme support!
-				- html, plaintext & json output modes
-				- Added wrapper to set debugger output mode
-				- Unified variable type checking / hilighting
-				- Drastically reduced function recursion
-				- Added array key variable type & string length outputs
-				- Further abstracted debugger output of resource types into their own external function includes (to reduce initial load overhead)
-				- Improved string debugging:
-				- Added ability to toggle visibility of entire debug blocks
-				- Nodes now blink on toggling and scroll to be onscreen, to make them easier to keep track of
-				-- Truncation in function parameters
-				-- Multiline strings now displayed with line numbers
-				-- Scrolling ouput panel for long lines
-				-- Line ending match regular expression now as a config var
-				-- Now display as collapsible nodes similar to Arrays, Objects etc
-				Benchmarker:
-				- Benchmark data can now be used externally
-				- Compressed variable output / dumping as extra parameters to bench()
-				- Benchmarking accuracy improvements & offsets for internal operations
-				- Color shading for memory & time usage
-				Stack Trace:
-				- Added 'compressed mode' variable view for stack trace function parameters
-				- Fixes to stack trace, so that it works with PHP5 pseudo-functions
-				Error Handler:
-				- Initial implementation
-				- Added option to log notices / strict warnings
-				Added option to output pPHPide initialisation statistics
+		3.0 (Final) - First public release
 
-		2.0 -	@thanks Jason Friedland <jfriedland@vision6.com.au>
-				@thanks Jamie Curnow	<jc@jc21.com>
-				@thanks Ben Kuskopf		<benkuskopf@hotmail.com>
-				 upgraded for PHP5
-				 proper object iteration
+		3.0.05a - Internal alpha test phase
+			:--FLUXATION HAPPENS--:
 
-		1.0 -	@thanks Nick Fisher 	<fisher@spadgos.com>
-				 basic functionality
-				 string-based print_r() behaviour
+		2.0 -	upgraded for PHP5
+				proper object iteration
+				With thanks / help from:
+					Jason Friedland <jfriedland@vision6.com.au>
+					Jamie Curnow	<jc@jc21.com>
+					Ben Kuskopf		<benkuskopf@hotmail.com>
+
+		1.0 -	basic functionality
+				string-based print_r() behaviour
+				With thanks / help from:
+					Nick Fisher 	<fisher@spadgos.com>
+
 	----------------------------------------------------------------------------
 	Copyright (c) 2008 Sam Pospischil <pospi@spadgos.com>
   ===============================================================================*/
-
-			// :TODO:
-//1
-			// strings: view as HTML / plain
-			// string option: highlight PHP code in output
-			// string option: highlight JS / CSS blocks in output
-//3
-			// (further!) file linkage based on strings (exact matches only, option)? (output file contents? first # lines?)
-//4
-			// array recursive debug output (as opposed to wildcards)!
-			// consistent column widths for array keys / object members
-			// go back and link to recursed member with arrays / objects (using reference IDs in plaintext)
-//5
-			// json theme (& handling) for ajax requests
-			// JSON-type HTML theme that works collaboratively with AJAX rendering mode
-//6
-			// create & integrate grep find class & example pages
-//:MAYBE:
-			// error handler: variable name detection (if possible?)
-			// variable type tooltips / hilighting for mysql results
 
 	$_PDEBUG_OPTIONS = array(
 
@@ -86,18 +34,18 @@
 			'auto_stack_trace'					=> true,	// enable stack trace in debugger & error handler
 			'use_error_handler' 				=> true,	// enable error handler with stack trace and other fanciness
 			'use_find'							=> false,	// enable find class usage
-			'show_startup_stats'				=> true,	// enable displaying the memory & procecessing overheads of initialising pPHPide
+			'show_startup_stats'				=> false,	// enable displaying the memory & procecessing overheads of initialising pPHPide
 
 		// File linkage / IDE protocol handling support
-			'server_path_search'				=> '/home/spospischil/',	// replace this path from serverside search results...
-			'server_path_replace'				=> 'X:\\',					// ...with this path for display / linkage
+			'server_path_search'				=> '/projects/pospi/',	// replace this path from serverside search results...
+			'server_path_replace'				=> 'P:\\projects\\',					// ...with this path for display / linkage
 			'server_unix'						=> true,							// true if server paths are unix (with /'s)
 			'client_unix'						=> false,							// true if client paths are unix (with /'s)
 			'translate_string_paths_in_html'	=> true,							// strings like "require('C:\web\myproject\file.inc.php');" gets paths replaced with links / tooltips automatically
 
 		// Debugger options
 			// choose a theme! (see below, or make your own)
-			'html_theme'						=> 'plaintext',//'pPHPide',		// or set 'plaintext' to use plaintext style in a <pre> tag
+			'html_theme'						=> 'pPHPide',		// or set 'plaintext' to use plaintext style in a <pre> tag
 			'plaintext_theme'					=> 'pPHPide',
 			'json_theme'						=> 'pPHPide',
 
@@ -150,8 +98,8 @@
 			'output_path_format_plaintext'		=> '%p%l',
 			'output_line_format'				=> '/%l',					// substituted into output_path_format at %l
 			'output_line_format_plaintext'		=> '/%l',					// substituted into output_path_format_plaintext at %l
-
-/*			// Ultraedit 14+, UEStudio 6.5+
+/*
+			// Ultraedit 14+, UEStudio 6.5+
 			'output_path_format'				=> '<a href="pPHPide:%p%l" title="%p%l">%f%l</a>',
 			'output_path_format_plaintext'		=> '%p%l',
 			'output_line_format'				=> '(%l)',					// substituted into output_path_format at %l
@@ -193,9 +141,9 @@
 					'COMMON_HEADER'	=> '<style type="text/css">'
 
 									// general debugger layout
-										. '	.PDebug { 	font-family: "trebuchet ms",helvetica,tahoma,sans-serif; font-size: 11px; line-height: 16px; background: #F0F6FF; margin: 0; padding: 3px; border-radius: 5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; border: 2px solid #E18E03; margin: 1px; display: block; }'
+										. '	.PDebug { 	white-space: normal; font-family: "trebuchet ms",helvetica,tahoma,sans-serif; font-size: 11px; line-height: 16px; background: #F0F6FF; margin: 0; padding: 3px; border-radius: 5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; border: 2px solid #E18E03; margin: 1px; display: block; }'
 										. '	.PDebug li { list-style: none; line-height: 18px; }'
-										. ' .PDebug ul { padding: 0; margin-left: 2em; }'
+										. ' .PDebug ul { white-space: normal; padding: 0; margin: 0 2em; min-width: 200px; }'
 										. ' .PDebug .info { font-weight: bold; color: #E18E03; }'
 										. ' .PDebug .info * { font-weight: normal; }'
 										. ' .PDebug .info ol.vars li { color: #000; list-style: decimal-leading-zero; }'	// these are only used for variable counter display
@@ -203,8 +151,8 @@
 										. ' .PDebug .alt { background: #F0F0FF; }'							// alternate table row colouring, etc
 
 									// stack trace styles
-										. ' .PDebug .stack ul li ul, .PDebug .stack ul li ul li { margin: 0; display: inline; }'
-										. ' .PDebug .err ul li ul, .PDebug .err ul li ul li { margin: 0; display: inline; }'
+										. ' .PDebug .stack ul li ul, .PDebug .stack ul li ul li { margin: 0; padding: 0; display: inline; }'
+										. ' .PDebug .err ul li ul, .PDebug .err ul li ul li { margin: 0; padding: 0; display: inline; }'
 										. ' .PDebug .bench>ul, .PDebug .bench>ul>li { margin: 0; display: inline; }'
 										. ' .PDebug .stack ul li ul li ul { display: block; }'
 										. ' .PDebug .stack ul li { padding: 1px; margin-bottom: 1px; }'
@@ -246,7 +194,7 @@
 										// multiline strings display block-level and are scrollable
 										. ' .PDebug .mstring, .PDebug .string	{ color: #000 }'
 										. ' .PDebug .mstring ol, .PDebug .string ol {	margin: 0 0 0 2em; display: block; border-color: #888; overflow: visible; padding: 0; margin: 0; width: 100%; }'//border: 1px solid #999; border-radius: 3px; -moz-border-radius: 3px; -webkit-border-radius: 3px; }'
-										. ' .PDebug .mstring ol li span, .PDebug .string ol li span { cursor: text; color: #888; }'
+										. ' .PDebug .mstring ol li span, .PDebug .string ol li span { cursor: text; color: #888; white-space: pre; }'
 										. ' .PDebug .mstring ol li, .PDebug .string ol li { margin: 0 0 0 1em; white-space: nowrap; font-family: monospace; list-style: decimal-leading-zero inside !important; }'
 										. ' .PDebug .mstring div, .PDebug .string div { overflow: auto; }'
 										// single line strings display inline
@@ -264,7 +212,8 @@
 										. ' .PDebug .array ul>li>li>span, .PDebug .object ul>li>li>span { position: relative; left: 1em; text-indent: -3em !important; }'
 										. ' .PDebug .array ul>li>ul, .PDebug .object ul li>ul { margin-left: 1em; }'
 										. ' .PDebug .array ul>li>ul>li, .PDebug .object ul>li>ul>li { display: inline; }'
-										. ' .PDebug .object ul li ul li.member 		{ color: #344F58; }'
+										. ' .PDebug .object ul li ul li.member 		{ color: #344F58; font-family: monospace; white-space: pre; }'
+										. ' .PDebug .array ul>li>ul>li:first-child>span, .PDebug .array ul>li>ul>li:first-child li>span	{ font-family: monospace; white-space: pre; }'
 										. ' .PDebug .object ul li ul span.private		{ color: #E00; }'
 										. ' .PDebug .object ul li ul span.public		{ color: #090; }'
 										. ' .PDebug .object ul li ul span.protected	{ color: #909; }'
@@ -308,11 +257,17 @@
 										. '	var PDebug = {'
 
 										// function to scroll the window to move something important (error message etc) into view
+										// this method is much nicer than window.scrollIntoView(), which will cause a scroll to
+										// the element top / bottom even if onscreen
 										. '	f: function(el) {'
 										. '		if (typeof(el) == "string") {'
 										. '			el = document.getElementById(el);'
 										. '		}'
-										. '		try { el.scrollIntoView(false); } catch(e) { } '  // no idea why this generates a blank erorr if you dont try / catch it! *shrug*
+										. '		var focus_input = document.createElement("input");'
+										. '		focus_input.type = "text";'
+										. '		el.parentNode.insertBefore(focus_input, el);'
+										. '		focus_input.focus();'
+										. '		el.parentNode.removeChild(focus_input);'
 										. '	},'
 
 										// toggle an entire output block's visibility
@@ -453,9 +408,10 @@
 
 					'COLLAPSED_STRING'	  => ' style="display: none"',
 
-					'VARIABLE_OUTPUT_FORMAT' => "\n" . '<li class="%t" title="%t"><span>%v</span></li>' . "\n",
+					'VARIABLE_OUTPUT_FORMAT' => "\n" . '<li class="%t" title="%t"><span> %v</span></li>' . "\n",
 
 					'INDENT_STRING' 		=> "\t",
+					'PADDING_CHARACTER'		=> " ",		// recommend you use this along with a "white-space: pre; font-family: monospace;" style in HTML mode
 
 					'HEADER_BLOCK' 			=> '<ul class="PDebug">' . "\n",
 
@@ -471,11 +427,14 @@
 						'MULTILINE_STRING_JOINER' => "\n",
 
 					'ARRAY_FORMAT'			=>	'<li class="array c%i" title="array (%i elements)" onclick="PDebug.t(event);"><span><nobr>&nbsp;Array (%i elements)<span class="inner">: [&nbsp;</span></nobr><ul%c>%s</ul><nobr><span class="inner">&nbsp;]&nbsp;</span></nobr></span></li>' . "\n",
-						'ARRAY_PAIR'		=>		'<li><ul>%k<li class="joiner"> &#061;&gt; </li>%v</ul></li>',
+						'ARRAY_KEY_NUMERIC'	=>		'<li><ul><li class="integer"><span>%k</span></li><li class="joiner"> ',
+						'ARRAY_KEY_STRING'	=>		'<li><ul><li class="string">&quot;<div><ol><li><span>%k</span></li></ol></div>&quot;</li><li class="joiner"> ',
+						'ARRAY_VALUE'		=>		'&#061;&gt; </li>%v</ul></li>',
 						'ARRAY_JOINER'		=>		"\n",
 
 					'OBJECT_FORMAT'			=>	'<li class="object" title="%i object" onclick="PDebug.t(event);"><span><nobr>&nbsp;%i Object<span class="inner">: {&nbsp;</span></nobr><ul%c>%s</ul><nobr><span class="inner">&nbsp;}&nbsp;</span></nobr></span></li>' . "\n",
-						'OBJECT_MEMBER'		=>		'<li><ul><li class="member">%k:<span class="%i">%i</span></li><li class="joiner">:&#061</li>%v</ul></li>',
+						'OBJECT_INDEX'		=>		'<li><ul><li class="member"><span class="%i">%i:</span>%k</li>',
+						'OBJECT_MEMBER'		=>		'<li class="joiner">:&#061</li>%v</ul></li>',
 						'OBJECT_JOINER'		=>		"\n",
 
 					'GENERIC_FORMAT'		=>	'<li class="resource" title="%t resource" onclick="PDebug.t(event);"><span><nobr>&nbsp;%t [%i]<span class="inner">&nbsp;(&nbsp;</span></nobr><table cellpadding="0" cellspacing="1"%c>%s</table><nobr><span class="inner">&nbsp;)&nbsp;</span></nobr></span></li>' . "\n",
@@ -504,34 +463,34 @@
 					//	%dt	=	time diff since last call (s)
 					//	%dm	=	memory diff since last call (KB)
 					//  %s  =   variables to dump
-					'BENCH_FORMAT'			=>	'<li class="bench" id="PDebug_bench%n">%i : %p @ <span style="color: %ct">%t</span>s [<span style="color: %cdt">%dt</span>s] <span style="color: %cm">%m</span>K [<span style="color: %cdm">%dm</span>K] <ul>%s</ul></li>' . "\n",
+					'BENCH_FORMAT'			=>	'<li class="bench" id="PDebug_bench%n">%i : %p @ <span style="color: %ct">%t</span>s [<span style="color: %cdt">%dt</span>s] <span style="color: %cm">%m</span>K [<span style="color: %cdm">%dm</span>K]<br />%-<ul>%s</ul></li>' . "\n",
 
 					// This one is like a benchmark, except that it shows stats for pPHPide startup overhead
 					// Feel entirely free to disable this with the config var up top if it shits you!
 					// :NOTE:
 					//  - %t and %m are not used for this, only the overhead is shown.
 					//  - %p shows $_SERVER['PHP_SELF'], or server path of the executing script if unavailable
-					'STARTUP_STATS_FORMAT'		=>  '<li><span class="resource"><span><nobr style="cursor: default;">:NOTE:</nobr></span></span><span class="info"> pPHPide loaded </span>for <span style="color: #0086CE;">%p</span>: <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB</li>',
-					//	- %p is additionally not usefd for this one...
-					'INTERNAL_CALL_LOG_FORMAT'	=>  '<li onclick="PDebug.c(this);"><span class="resource"><span><nobr>:NOTE:</nobr></span></span><span class="info %i"> %i </span>: <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB</li>',
+					'STARTUP_STATS_FORMAT'		=>  '<li><span class="resource"><span><nobr style="cursor: default;">:pPHPide:</nobr></span></span> <span class="info">loaded</span> for <span style="color: #0086CE;">%p</span>: (in <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB)</li>',
+					//	- %p is additionally not used in this one...
+					'INTERNAL_CALL_LOG_FORMAT'	=>  '<li onclick="PDebug.c(this);"><span class="resource"><span><nobr>:pPHPide:</nobr></span></span><span class="info %i"> %i </span>: (executed in <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB)</li>',
 
-					// Error handler wildcards:
 					//  %n =	error number (since script start)
 					//	%e =	error type
 					//	%m =	error message
 					// 	%p =	file path
-					'ERROR_FORMAT' 			=> '<li class="err" id="PDebug_error%n"><b>%e</b> : %p<ul class="errorText">%m</ul></li><script type="text/javascript">PDebug.f("PDebug_error%n");</script>' . "\n",
+					'ERROR_FORMAT' 			=> '<li class="err" id="PDebug_error%n"><b>%e</b> : %p<ul class="errorText">%m</ul></li>' . "\n", //<script type="text/javascript">PDebug.f("PDebug_error%n");</script>' . "\n",
 
-					// Stack wildcards:
+					//	%s =	combined stack lines
+					'STACK_FORMAT'			=>	'<li class="stack"><span class="info">Stack:</span> <ul>%s</ul></li>' . "\n",
 					//	%c = 	class name
 					//	%t = 	call type
+					//	%o =	compressed calling object debug
 					// 	%f =	function name
 					// 	%s =	function arguments
 					// 	%p =	file path
-					'STACK_FORMAT'			=>	'<li class="stack"><span class="info">Stack:</span> <ul>%s</ul></li>' . "\n",
 					//  %cs =   line colour
 					//  %i  =   function call number
-						'STACK_LINE'		=> 		'<li style="background: %cs;">&nbsp;%p : %c%t%f( <ul>%s</ul> )</li>' . "\n",
+						'STACK_LINE'		=> 		'<li style="background: %cs;">&nbsp;%p : <ul>%o</ul>%t%f( <ul>%s</ul> )</li>' . "\n",
 						'STACK_JOINER'		=> 		', ',
 				),
 
@@ -570,6 +529,7 @@
 					//	%t =	variable type
 					// 	%v =	simple variable value (using VARIABLE_OUTPUT_FORMAT) / array value	/ object member
 					// 	%k =	array key / object member name
+					//	%p =	array key padding string
 					//	%i =	"info"... object class / array count / string length / resource type / counter variable etc
 					//  %c =	collapsed string, if debug_start_collapsed is set (see below:)
 
@@ -578,6 +538,7 @@
 					'VARIABLE_OUTPUT_FORMAT' => "%v",
 
 					'INDENT_STRING' 		=> "    ",
+					'PADDING_CHARACTER'		=> "-",
 
 					'HEADER_BLOCK' 			=> "\n",
 
@@ -593,11 +554,14 @@
 						'MULTILINE_STRING_JOINER' => "\n",
 
 					'ARRAY_FORMAT'			=>	"Array (%i elements): [%s%-]",
-						'ARRAY_PAIR'		=>		'%-[%k] => %v',
+						'ARRAY_KEY_NUMERIC'	=>		'%-[%p%k] ',
+						'ARRAY_KEY_STRING'	=>		'%-["%k"%p] ',
+						'ARRAY_VALUE'		=>		'=> %v',			// these two are separated so that padding can be calculated
 						'ARRAY_JOINER'		=>		"\n",
 
 					'OBJECT_FORMAT'			=>	"%i Object: {%s%-}",
-						'OBJECT_MEMBER'		=>		'%-[%k:%i] := %v',
+						'OBJECT_INDEX'		=>		'%-[%i:%k] ',
+						'OBJECT_MEMBER'		=>		':= %v',			// these two are separated so that padding can be calculated
 						'OBJECT_JOINER'		=>		"\n",
 
 					'GENERIC_FORMAT'		=>	"%t [%i]: (%s%-)",
@@ -633,25 +597,25 @@
 					// :NOTE:
 					//  - %t and %m are not used for this, only the overhead is shown.
 					//  - %p shows $_SERVER['PHP_SELF'], or server path of the executing script if unavailable
-					'STARTUP_STATS_FORMAT'		=>  "[[pPHPide loaded for %p]] %dt sec / %dm KB\n",
-					//	- %p is additionally not usefd for this one...
-					'INTERNAL_CALL_LOG_FORMAT'	=>  "[pPHPide invoked: %i] : %dt sec / %dm KB\n",
+					'STARTUP_STATS_FORMAT'		=>  "[[pPHPide loaded]] for %p (in %dt sec / %dm KB)\n",
+					//	- %p is additionally not used in this one...
+					'INTERNAL_CALL_LOG_FORMAT'	=>  "[pPHPide invoked: %i] : (executed in %dt sec / %dm KB)\n",
 
-					// Error handler wildcards:
 					//  %n =	error number (since script start)
 					//	%e =	error type
 					//	%m =	error message
 					// 	%p =	file path
 					'ERROR_FORMAT' 			=> " [ERROR %n] %e : %p \n  %m\n",
 
-					// Stack wildcards:
+					//	%s =	combined stack lines
+					'STACK_FORMAT'			=>	" STACK: \n%s",
 					//	%c = 	class name
+					//	%o =	compressed calling object debug
 					//	%t = 	call type
 					// 	%f =	function name
 					// 	%s =	function arguments
 					// 	%p =	file path
-					'STACK_FORMAT'			=>	" STACK: \n%s",
-					//  %i  =   function call number
+					//  %i =   function call number
 						'STACK_LINE'		=> 		"  [%i] %p : %c%t%f(%s)\n",
 						'STACK_JOINER'		=> 		", ",
 				),

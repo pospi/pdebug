@@ -75,7 +75,7 @@
 		// resource table: info header rows
 		$cells = array();
 		$cells[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR),	array(PDebug::$CURRENT_INDENT_STRING, '', str_pad('Number of rows:   ' . $num_rows, $full_width)), 	PDebug::$GENERIC_CELL);
-		if (PProtocolHandler::isOutputtingHtml()) {
+		if (PProtocolHandler::isOutputtingHtml() && !PProtocolHandler::$OUTPUT_HTML_AS_PLAIN) {
 			// add empty table cells for HTML output mode
 			for ($i = 0; $i < $num_fields - 1; ++$i) {
 				$cells[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR),	array(PDebug::$CURRENT_INDENT_STRING, '', ''),	PDebug::$GENERIC_CELL);
@@ -85,7 +85,7 @@
 
 		$cells = array();
 		$cells[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR),	array(PDebug::$CURRENT_INDENT_STRING, '', str_pad('Number of fields: ' . $num_fields, $full_width)),	PDebug::$GENERIC_CELL);
-		if (PProtocolHandler::isOutputtingHtml()) {
+		if (PProtocolHandler::isOutputtingHtml() && !PProtocolHandler::$OUTPUT_HTML_AS_PLAIN) {
 			// add empty table cells for HTML output mode
 			for ($i = 0; $i < $num_fields - 1; ++$i) {
 				$cells[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR),	array(PDebug::$CURRENT_INDENT_STRING, '', ''),	PDebug::$GENERIC_CELL);
