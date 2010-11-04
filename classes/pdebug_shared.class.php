@@ -1,12 +1,12 @@
 <?php
 /*================================================================================
-	pPHPide - protocol handler class
+	pdebug - protocol handler class
 	----------------------------------------------------------------------------
-	pPHPide protocol handler class for URI translation between different
+	pdebug protocol handler class for URI translation between different
 	filesystems / network resources / server paths etc
 
 	Adds support for IDE protocol handling for seamless debugging, @see
-	 http://pospi.spadgos.com/projects/pPHPide
+	 http://pospi.spadgos.com/projects/pdebug
 	----------------------------------------------------------------------------
 	Copyright (c) 2008 Sam Pospischil <pospi@spadgos.com>
   ===============================================================================*/

@@ -12,13 +12,13 @@
 //					bench(); 				{...some code happens...}	bench();
 //
 /*================================================================================
-	pPHPide - debugger class
+	pdebug - debugger class
 	----------------------------------------------------------------------------
 	PDebug static Debug class definition, and wrapper methods for easy
-	access - @see pphpide.conf.php for configuration options
+	access - @see pdebug.conf.php for configuration options
 
 	Supports IDE protocol handling for seamless debugging, @see
-	 http://pospi.spadgos.com/projects/pPHPide
+	 http://pospi.spadgos.com/projects/pdebug
 
 	:NOTE: There should be *absolutely* no markup or even TEXT in this class! ALL markup /
 			formatting to be generated through string substitution via configuration
@@ -108,7 +108,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		static $VARIABLE_OUTPUT_FORMAT;	// <li></li>					:NOTE: common format used in dumping all simple datatypes
 
-		static $STARTUP_STATS_FORMAT;		// format to output the startup statistics for pPHPide in. Disable by setting
+		static $STARTUP_STATS_FORMAT;		// format to output the startup statistics for pdebug in. Disable by setting
 		static $INTERNAL_CALL_LOG_FORMAT;
 
 		static $COLLAPSED_STRING;
@@ -162,7 +162,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		//============================================================================================================================
 
 		static $USE_STACK_TRACE = true;
-
+		static $USE_ERROR_HANDLER = false;
 		static $STRICT_ERROR_HANDLER = false;
 
 		static $ADJUST_BENCHMARKER_FOR_DEBUGGER = true;
@@ -562,7 +562,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 * Call this to return wrapper text for an external function call's output,
 		 * in the current output mode
 		 */
-		private static function verifyHeaderIncludes($header_extra = null, $footer_extra = null) {
+		public static function verifyHeaderIncludes($header_extra = null, $footer_extra = null) {
 			$header = $footer = '';
 
 			if (!PDebug::$HAS_OUTPUT_HEADER && PProtocolHandler::isOutputtingHtml()) {
@@ -646,7 +646,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 *
 		 *  @param		array		ref_chain	array of all previously dumped vars (avoids recursion)
 		 */
-		private static function getDebugFor($var, $short_format = false, &$ref_chain = null) {
+		public static function getDebugFor($var, $short_format = false, &$ref_chain = null) {
 			PDebug::sanityCheck();
 
 			$out = '';
@@ -750,6 +750,11 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					$key = $key_parts[2];
 					$key_type = ($key_parts[1] == '*') ? 'protected' : 'private';
 				}
+				
+				// Ignore PDebug internal object ID if found - @see PDebug::getObjectUID()
+				if ($key == '__pdebugID__') {
+					continue;
+				}
 
 				$key_display_length = strlen($key);
 				$key_type_display_length = strlen($key_type);
@@ -782,6 +787,18 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			PDebug::decreaseIndent();
 
 			return str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO, PDebug::WC_SUBITEM, PDebug::WC_COLLAPSED_STR), array(PDebug::$CURRENT_INDENT_STRING, get_class($var), (!$compress || PProtocolHandler::isOutputtingHtml() ? PDebug::$OBJECT_JOINER . implode(PDebug::$OBJECT_JOINER, $obj_contents) . PDebug::$OBJECT_JOINER : ''), ($compress ? PDebug::$COLLAPSED_STRING : '') ), PDebug::$OBJECT_FORMAT);
+		}
+		
+		/**
+		 * Returns a unique identifier for an object instance.
+		 * This is used in HTML output so that multiple dumps of the same object
+		 * do not require any extra output to be sent - instead, javascript is used to load their contents for debugging
+		 */
+		private static function getObjectUID($object) {		
+			if (!isset($object->__pdebugID__)) {
+				$object->__pdebugID__ = uniqid("pd");
+			}
+			return $object->__pdebugID__;
 		}
 
 		/**
@@ -852,7 +869,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					} else {
 						$this_pad_length += $contains_string_keys && $strings_longer ? ($string_key_extra - $numeric_key_extra) : 0;
 					}
-					$this_line_padding = str_repeat(($numeric_array ? ' ' : PDebug::$PADDING_CHARACTER), $this_pad_length - strlen($array_pair_info[0]));
+					$this_line_padding = str_repeat(($numeric_array ? ' ' : PDebug::$PADDING_CHARACTER), max(0, $this_pad_length - strlen($array_pair_info[0])));
 				}
 
 				$arr_contents[$idx] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY_PADDING, PDebug::WC_KEY), array(PDebug::$CURRENT_INDENT_STRING, $this_line_padding, $array_pair_info[0]), $array_pair_info[2])
@@ -958,43 +975,36 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 			$arg_list		= func_get_args();
 
-			$type			= $arg_list[0];
-			$error_message	= $arg_list[1];
-			$file_name		= $arg_list[2];
-			$line_number	= $arg_list[3];
-			$data			= $arg_list[4];
+			if (count($arg_list) != 1) {
+				$type			= $arg_list[0];
+				$error_message	= $arg_list[1];
+				$file_name		= $arg_list[2];
+				$line_number	= $arg_list[3];
+				$data			= $arg_list[4];
+			} else {
+				list($type, $error_message, $file_name, $line_number, $data) = PDebug::__exception($arg_list[0]);
+			}
 
 			if (!PDebug::$STRICT_ERROR_HANDLER && ($type == E_NOTICE || $type == E_STRICT)) {
 				return;
 			}
 
-			/*else {
-				// caught exception
-				$exc = func_get_arg(0);
-				$errno = $exc->getCode();
-				$errstr = $exc->getMessage();
-				$errfile = $exc->getFile();
-				$errline = $exc->getLine();
-
-				$backtrace = $exc->getTrace();
-			}*/
-
 			$error_types = array (
-						E_ERROR				=> 'ERROR',
-						E_WARNING			=> 'WARNING',
-						E_NOTICE			=> 'NOTICE',
-						E_STRICT			=> 'STRICT NOTICE',
+				E_ERROR				=> 'ERROR',
+				E_WARNING			=> 'WARNING',
+				E_NOTICE			=> 'NOTICE',
+				E_STRICT			=> 'STRICT NOTICE',
 
-						E_PARSE			 	=> 'PARSING ERROR',
-						E_CORE_ERROR		=> 'CORE ERROR',
-						E_CORE_WARNING		=> 'CORE WARNING',
-						E_COMPILE_ERROR		=> 'COMPILE ERROR',
-						E_COMPILE_WARNING	=> 'COMPILE WARNING',
-						E_USER_ERROR		=> 'USER ERROR',
-						E_USER_WARNING		=> 'USER WARNING',
-						E_USER_NOTICE		=> 'USER NOTICE',
-						E_RECOVERABLE_ERROR => 'RECOVERABLE ERROR',
-					);
+				E_PARSE			 	=> 'PARSING ERROR',
+				E_CORE_ERROR		=> 'CORE ERROR',
+				E_CORE_WARNING		=> 'CORE WARNING',
+				E_COMPILE_ERROR		=> 'COMPILE ERROR',
+				E_COMPILE_WARNING	=> 'COMPILE WARNING',
+				E_USER_ERROR		=> 'USER ERROR',
+				E_USER_WARNING		=> 'USER WARNING',
+				E_USER_NOTICE		=> 'USER NOTICE',
+				E_RECOVERABLE_ERROR => 'RECOVERABLE ERROR',
+			);
 
 			// create error message
 			if (array_key_exists($type, $error_types)) {
@@ -1019,12 +1029,27 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				case E_USER_WARNING:
 					PDebug::goExternal($err_msg, $err);
 					PDebug::__errorOutput($header_extra . $err_msg . $trace . $footer_extra);
-					return;
+					return true;
 				default:
 					PDebug::goExternal($err_msg, $err);
-					exit(PDebug::__errorOutput($header_extra . $err_msg . $trace . $footer_extra));
+					PDebug::__errorOutput($header_extra . $err_msg . $trace . $footer_extra);
+					return false;
 			}
 
+		}
+		
+		public static function __checkExitStatus() {
+			if (PDebug::$USE_ERROR_HANDLER) {
+				$error = error_get_last();
+				if (in_array($error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_STRICT))) {
+					PDebug::__error($error['type'], $error['message'], $error['file'], $error['line'], array());
+				}
+			}
+		}
+
+		// handler for caught exceptions (differs slightly from old PHP errors)
+		private static function __exception($exc) {
+			return array($exc->getCode(), $exc->getMessage(), $exc->getFile(), $exc->getLine(), $exc->getTrace());
 		}
 
 		private static function __errorOutput($message) {
@@ -1032,7 +1057,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		}
 
 
-		// method to output pPHPide startup statistical string, stored upon loading the library
+		// method to output pdebug startup statistical string, stored upon loading the library
 		public static function __printInitStats() {
 			PDebug::goInternal();
 			if (PDebug::$INITIALISATION_LOG_STRING) {
@@ -1055,7 +1080,9 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 	// set error handler, if desired :NOTE: very experimental
 	if ($_PDEBUG_OPTIONS['use_error_handler']) {
-		set_error_handler('PDebug::__error');
+		PDebug::$USE_ERROR_HANDLER = true;
+		set_error_handler(array('PDebug', '__error'));
+		register_shutdown_function(array('PDebug', '__checkExitStatus'));
 	}
 
 	// other options
@@ -1125,32 +1152,27 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 	}
 
 	// store all rendering data for the currently selected theme in the class, so the output mode can be changed mid-page
-	$html_theme = isset($_PDEBUG_OPTIONS['html_theme']) ? $_PDEBUG_OPTIONS['html_theme'] : 'pPHPide';
-	$text_theme = isset($_PDEBUG_OPTIONS['plaintext_theme']) ? $_PDEBUG_OPTIONS['plaintext_theme'] : 'pPHPide';
-	$json_theme = isset($_PDEBUG_OPTIONS['json_theme']) ? $_PDEBUG_OPTIONS['json_theme'] : 'pPHPide';
+	$html_theme = isset($_PDEBUG_OPTIONS['html_theme']) ? $_PDEBUG_OPTIONS['html_theme'] : 'pdebug';
 
 	if ($html_theme == 'plaintext') {
-		foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_TEXT][$text_theme] as $layout_property => $value) {
+		foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_TEXT] as $layout_property => $value) {
 			PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML][$layout_property] = $value;
 		}
 		PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML]['HEADER_BLOCK'] = '<pre>' . PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML]['HEADER_BLOCK'];
 		PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML]['FOOTER_BLOCK'] .= '</pre>';
 		PProtocolHandler::$OUTPUT_HTML_AS_PLAIN = true;
 	} else {
-		foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_HTML][$html_theme] as $layout_property => $value) {
+		foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_HTML] as $layout_property => $value) {
 			PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML][$layout_property] = $value;
 		}
 	}
-	foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_TEXT][$text_theme] as $layout_property => $value) {
+	foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_TEXT] as $layout_property => $value) {
 		PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_TEXT][$layout_property] = $value;
 	}
-	foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_JSON][$json_theme] as $layout_property => $value) {
+	foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_JSON] as $layout_property => $value) {
 		PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_JSON][$layout_property] = $value;
 	}
 	unset($html_theme);
-	unset($text_theme);
-	unset($json_theme);
-
 
 	if (isset($_PDEBUG_OPTIONS['strict_error_handler'])) {
 		PDebug::$STRICT_ERROR_HANDLER = (bool)$_PDEBUG_OPTIONS['strict_error_handler'];

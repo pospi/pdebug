@@ -1,26 +1,23 @@
 <?php
 /*================================================================================
-	pPHPide - initialisation file
+	pdebug - initialisation file
 	----------------------------------------------------------------------------
 	Include IDE package files. No namespace pollution whatsoever, aside from
-	PDebug and PFind classes, and function helpers (if enabled).
+	PDebug class and function helpers (if enabled).
 	----------------------------------------------------------------------------
 	Copyright (c) 2008 Sam Pospischil <pospi@spadgos.com>
   ===============================================================================*/
 
 	// store the start time / mem of this script without initialising any classes,
 	// so that we can time the startup overhead of the package.
-	$pphpide_init_start_time = microtime(true);
-	$pphpide_init_start_mem  = memory_get_usage();
+	$pdebug_init_start_time = microtime(true);
+	$pdebug_init_start_mem  = memory_get_usage();
 
-	include('pphpide.conf.php');
+	include('pdebug.conf.php');
 
-	include('classes/pphpide_shared.class.php');
+	include('classes/pdebug_shared.class.php');
 	if ($_PDEBUG_OPTIONS['use_debugger']) {
-		include('classes/pphpide_debug.class.php');
-	}
-	if ($_PDEBUG_OPTIONS['use_find']) {
-		include('classes/pphpide_find.class.php');
+		include('classes/pdebug_debug.class.php');
 	}
 
 	if (isset($_PDEBUG_OPTIONS['show_startup_stats']) && $_PDEBUG_OPTIONS['show_startup_stats']) {
@@ -28,8 +25,8 @@
 		unset($_PDEBUG_OPTIONS);		// unset this separately so we don't have to make a temporary variable for $show_startup_stats
 
 		// apply stat shading
-		$time_stuff = PDebug::__shadedTime(microtime(true) - $pphpide_init_start_time);
-		$mem_stuff = PDebug::__shadedMem(memory_get_usage() - $pphpide_init_start_mem);
+		$time_stuff = PDebug::__shadedTime(microtime(true) - $pdebug_init_start_time);
+		$mem_stuff = PDebug::__shadedMem(memory_get_usage() - $pdebug_init_start_mem);
 
 		// initialisation statistics string precalculation
 		PDebug::$INITIALISATION_LOG_STRING = str_replace(array('%p', '%dt', '%dm', '%cdt', '%cdm'),
@@ -63,8 +60,8 @@
 		// can't forget to clean up these variables
 		unset($time_stuff);
 		unset($mem_stuff);
-		unset($pphpide_init_start_time);
-		unset($pphpide_init_start_mem);
+		unset($pdebug_init_start_time);
+		unset($pdebug_init_start_mem);
 
 		// we defer loading statistics to output at script termination
 		if (PDebug::$STARTUP_STATS_FORMAT) {
