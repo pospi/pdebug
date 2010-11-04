@@ -485,7 +485,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			$mem_diff  = $mem_diff[0];
 			$time_diff = $time_diff[0];
 
-			$time_relative = $bench_stats['since'];
+			$time_relative = isset($bench_stats['since']) ? $bench_stats['since'] : null;
 
 			// dump variables along with the benchmarker if we have opted to
 			$var_extra = array();
