@@ -38,6 +38,8 @@
 
 		static $LINE_ENDING_REGEX = "/(\r\n|\r|\n)/";
 
+		static $OUTPUT_HTML_AS_PLAIN = false;	// true if outputting plaintext data in HTML mode (config hack for end user simplicity)
+
 		/**
 		 * Translates a server path to a client path, to link your live application to your local dev codebase via
 		 * IDE protocol handling
@@ -58,8 +60,8 @@
 				$translated_path = str_replace('\\', '/', $translated_path);
 			}
 
-			$line_str = $line ? str_replace('%l', $line, (PProtocolHandler::$CURRENT_OUTPUT_MODE == PProtocolHandler::MODE_HTML ? PProtocolHandler::$OUTPUT_LINE_FORMAT : PProtocolHandler::$OUTPUT_LINE_FORMAT_PLAINTEXT)) : '';
-			$translated_path = str_replace(array('%p', '%f', '%l'), array($translated_path, basename($server_path), $line_str), (PPRotocolHandler::$CURRENT_OUTPUT_MODE == PProtocolHandler::MODE_HTML ? PProtocolHandler::$OUTPUT_PATH_FORMAT : PProtocolHandler::$OUTPUT_PATH_FORMAT_PLAINTEXT));
+			$line_str = $line ? str_replace('%l', $line, (PProtocolHandler::isOutputtingHtml() ? PProtocolHandler::$OUTPUT_LINE_FORMAT : PProtocolHandler::$OUTPUT_LINE_FORMAT_PLAINTEXT)) : '';
+			$translated_path = str_replace(array('%p', '%f', '%l'), array($translated_path, basename($server_path), $line_str), (PPRotocolHandler::isOutputtingHtml() ? PProtocolHandler::$OUTPUT_PATH_FORMAT : PProtocolHandler::$OUTPUT_PATH_FORMAT_PLAINTEXT));
 
 			return $translated_path;
 		}
@@ -72,7 +74,7 @@
 		 *		  where no parsing is required
 		 */
 		public static function translatePathsInString($string) {
-			if (PProtocolHandler::$CURRENT_OUTPUT_MODE == PProtocolHandler::MODE_HTML && PProtocolHandler::$APP_ROOT) {   // cant really do anything if we don't know the app root path...
+			if (PProtocolHandler::isOutputtingHtml() && PProtocolHandler::$APP_ROOT) {   // cant really do anything if we don't know the app root path...
 				$path = $line = null;
 
 				$regex_special_chars = '\\/^.$|()[]*+?{}-';
@@ -133,7 +135,7 @@
 		// format string, escaped for html... if required
 
 		public static function htmlSafeString($string, $allow_br = false) {
-			if (PProtocolHandler::$CURRENT_OUTPUT_MODE == PProtocolHandler::MODE_HTML) {
+			if (PProtocolHandler::isOutputtingHtml()) {
 				$string = htmlentities($string);
 				if ($allow_br) {
 					$string = nl2br($string);
@@ -145,7 +147,7 @@
 		// format string, escaped for html attribute tag... if required
 
 		public static function encodeHtmlAttribute($string) {
-			if (PProtocolHandler::$CURRENT_OUTPUT_MODE == PProtocolHandler::MODE_HTML) {
+			if (PProtocolHandler::isOutputtingHtml()) {
 				$replacements = array(
 					'&'		=> '&amp;',		// lazy, but.. just do this one first, okay?
 					'  ' 	=> ' &nbsp;',
@@ -156,6 +158,46 @@
 				$string = str_replace(array_keys($replacements), array_values($replacements), $string);
 			}
 			return $string;
+		}
+
+		// line breaking function using regexes to detect multiple line-ending types automatically
+		public static function getStringLines($string) {
+
+			$parts = preg_split(PProtocolHandler::$LINE_ENDING_REGEX, $string, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+			$string_lines = array();
+			$line_num = 1;
+			$last_was_newline = false;
+
+			for ($i = 0; $i < sizeof($parts); ++$i) {
+				$piece = $parts[$i];
+
+				// if the previous line wasn't a newline
+				if (!$last_was_newline) {
+					// if this is a newline, add the newline to output...
+					if ($piece == "\r\n" || $piece == "\r" || $piece == "\n") {
+						++$line_num;
+
+						// set the text for the next line to include the newline (so copy/pasting is ok in HTML mode)
+						if (PProtocolHandler::isOutputtingHtml() && !PProtocolHandler::$OUTPUT_HTML_AS_PLAIN) {
+							$line = $piece;
+						} else {
+							$line = '';
+						}
+
+						$last_was_newline = true;	// flag that this was a newline in case the next one is too
+						continue;
+					} else {	// ...otherwise we start off blank for the next line
+						$line = '';
+					}
+				}
+
+				$line .= $piece;
+				$last_was_newline = false;
+				$string_lines[] = $line;
+			}
+
+			return $string_lines;
 		}
 
 		//================================================================================================
@@ -177,7 +219,7 @@
 
 			$low_val = $low[0];
 			$low = $low[1];
-			$high_val = $high[0] > 0 ? $high[0] - 1 : $high[0];
+			$high_val = $high[0];
 			$high = $high[1];
 
 			// clamp the value, first
@@ -234,6 +276,10 @@
 					break;
 
 			}
+		}
+
+		public static function isOutputtingHtml() {
+			return PProtocolHandler::$CURRENT_OUTPUT_MODE == PProtocolHandler::MODE_HTML;
 		}
 
 	}

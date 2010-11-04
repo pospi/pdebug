@@ -8,7 +8,7 @@
 	debugging, @see http://pospi.spadgos.com/projects/pPHPide
 
 	Version History:
-		3.0 -	Beta phase test phase release
+		3.0a -	Internal alpha phase test releases
 				Complete code rewrite
 				Drastic performance improvements, precomputed string substitution etc
 				OOP design methodology
@@ -18,8 +18,9 @@
 				Simplified integration - single include & abstracted configuration
 				Debugger:
 				- Theme support!
-				- Unified variable type checking / hilighting
+				- html, plaintext & json output modes
 				- Added wrapper to set debugger output mode
+				- Unified variable type checking / hilighting
 				- Drastically reduced function recursion
 				- Added array key variable type & string length outputs
 				- Further abstracted debugger output of resource types into their own external function includes (to reduce initial load overhead)
@@ -59,15 +60,9 @@
 
 			// :TODO:
 //1
-			// variable type tooltips / hilighting for mysql results
 			// strings: view as HTML / plain
 			// string option: highlight PHP code in output
 			// string option: highlight JS / CSS blocks in output
-			// add indentation
-			// plaintext output mode theme
-//2
-			// error handler: variable name detection (if possible?)
-			// toggleable object nodes in stack
 //3
 			// (further!) file linkage based on strings (exact matches only, option)? (output file contents? first # lines?)
 //4
@@ -79,6 +74,9 @@
 			// JSON-type HTML theme that works collaboratively with AJAX rendering mode
 //6
 			// create & integrate grep find class & example pages
+//:MAYBE:
+			// error handler: variable name detection (if possible?)
+			// variable type tooltips / hilighting for mysql results
 
 	$_PDEBUG_OPTIONS = array(
 
@@ -98,7 +96,8 @@
 			'translate_string_paths_in_html'	=> true,							// strings like "require('C:\web\myproject\file.inc.php');" gets paths replaced with links / tooltips automatically
 
 		// Debugger options
-			'html_theme'						=> 'pPHPide',		// choose a theme! (see below, or make your own)
+			// choose a theme! (see below, or make your own)
+			'html_theme'						=> 'plaintext',//'pPHPide',		// or set 'plaintext' to use plaintext style in a <pre> tag
 			'plaintext_theme'					=> 'pPHPide',
 			'json_theme'						=> 'pPHPide',
 
@@ -118,7 +117,7 @@
 			'benchmarker_mem_value_low'			=> 512,				// memory usage under this is considered to be "efficient"
 			'benchmarker_color_high'			=> 0xBB0000,		// display color for long executions
 			'benchmarker_color_low'				=> 0x00BB00,		// display color for short executions
-			'stack_color_newest'				=> 0xAAFFAA,		// most recent call in stack will be shaded this colour
+			'stack_color_newest'				=> 0x88FF88,		// most recent call in stack will be shaded this colour
 			'stack_color_oldest'				=> 0xFF8888,		// most ancient call in stack will be shaded this colour
 
 		// Find class (and script) default options (should be made configurable via page inputs, of course!)
@@ -442,6 +441,7 @@
 					// Generic wildcards:
 					// 	%s =	subitem - nests another group of items inside this one
 					//			used for array pairs, object members, function arguments, table lines etc
+					//  %- =	indentation string appropriate for this level of the output (you don't *really* need this for HTML, btw)
 
 
 					// Debugger wildcards:
@@ -467,7 +467,8 @@
 					'MULTILINE_STRING_FORMAT'	=>	'<li class="mstring" title="string (%i chars, %l lines)" onclick="PDebug.t(event);"><span><nobr>&nbsp;string (%i chars, %l lines)<span class="inner">&nbsp;&quot;&nbsp;</span></nobr><div><ol>%s</ol></div><nobr><span class="inner">&nbsp;&quot;&nbsp;</span></nobr></span></li>',
 					//	%n =	string line number
 					//	%v =	string line text
-						'MULTILINE_STRING_LINE'	=>	'<li><span>%v</span></li>' . "\n",
+						'MULTILINE_STRING_LINE'	=>	'<li><span>%v</span></li>',
+						'MULTILINE_STRING_JOINER' => "\n",
 
 					'ARRAY_FORMAT'			=>	'<li class="array c%i" title="array (%i elements)" onclick="PDebug.t(event);"><span><nobr>&nbsp;Array (%i elements)<span class="inner">: [&nbsp;</span></nobr><ul%c>%s</ul><nobr><span class="inner">&nbsp;]&nbsp;</span></nobr></span></li>' . "\n",
 						'ARRAY_PAIR'		=>		'<li><ul>%k<li class="joiner"> &#061;&gt; </li>%v</ul></li>',
@@ -483,7 +484,7 @@
 						'GENERIC_FOOTER'	=>		'<tfoot class="%t">%s</tfoot>' . "\n",
 						//	%i in this case is intended as a 'spin' variable for table row styling etc
 						'GENERIC_LINE'		=>		'<tr class="%t %i"> %s</tr>' . "\n",
-						'GENERIC_CELL'		=>		'<td class="%t">%v</td>' . "\n",							// this is used for generic resources that don't require special formatting
+						'GENERIC_CELL'		=>		'<td class="%t">%v</td>' . "\n",
 						'GENERIC_TITLED_CELL'	=>	'<td class="%t" title="%t">%v</td>',
 						'GENERIC_LINE_JOINER'	=>	"",
 						'GENERIC_CELL_JOINER'	=>	"",
@@ -503,7 +504,7 @@
 					//	%dt	=	time diff since last call (s)
 					//	%dm	=	memory diff since last call (KB)
 					//  %s  =   variables to dump
-					'BENCH_FORMAT'			=>	'<li class="bench" id="PDebug_bench%n">%i : %p @ <span style="color: %ct">%t</span>s [<span style="color: %cdt">%dt</span>s] <span style="color: %cm">%m</span>K [<span style="color: %cdm">%dm</span>K] <ul>%s</ul></li>' . "\n", //<script type="text/javascript">PDebug.f("PDebug_bench%n");</script>' . "\n",
+					'BENCH_FORMAT'			=>	'<li class="bench" id="PDebug_bench%n">%i : %p @ <span style="color: %ct">%t</span>s [<span style="color: %cdt">%dt</span>s] <span style="color: %cm">%m</span>K [<span style="color: %cdm">%dm</span>K] <ul>%s</ul></li>' . "\n",
 
 					// This one is like a benchmark, except that it shows stats for pPHPide startup overhead
 					// Feel entirely free to disable this with the config var up top if it shits you!
@@ -512,8 +513,7 @@
 					//  - %p shows $_SERVER['PHP_SELF'], or server path of the executing script if unavailable
 					'STARTUP_STATS_FORMAT'		=>  '<li><span class="resource"><span><nobr style="cursor: default;">:NOTE:</nobr></span></span><span class="info"> pPHPide loaded </span>for <span style="color: #0086CE;">%p</span>: <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB</li>',
 					//	- %p is additionally not usefd for this one...
-					//	- %c however is added as parameter for the calling type
-					'INTERNAL_CALL_LOG_FORMAT'	=>  '<li onclick="PDebug.c(this);"><span class="resource"><span><nobr>:NOTE:</nobr></span></span><span class="info %c"> %i </span>: <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB</li>',
+					'INTERNAL_CALL_LOG_FORMAT'	=>  '<li onclick="PDebug.c(this);"><span class="resource"><span><nobr>:NOTE:</nobr></span></span><span class="info %i"> %i </span>: <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB</li>',
 
 					// Error handler wildcards:
 					//  %n =	error number (since script start)
@@ -529,6 +529,8 @@
 					// 	%s =	function arguments
 					// 	%p =	file path
 					'STACK_FORMAT'			=>	'<li class="stack"><span class="info">Stack:</span> <ul>%s</ul></li>' . "\n",
+					//  %cs =   line colour
+					//  %i  =   function call number
 						'STACK_LINE'		=> 		'<li style="background: %cs;">&nbsp;%p : %c%t%f( <ul>%s</ul> )</li>' . "\n",
 						'STACK_JOINER'		=> 		', ',
 				),
@@ -547,7 +549,7 @@
 
 			),
 
-			// </html themes>
+			// < /html themes>
 //================================================================================================================
 //================================================================================================================
 			// <plaintext themes>
@@ -557,7 +559,101 @@
 				// <pPHPide default theme>
 
 				'pPHPide' => array(
+					'COMMON_HEADER'	=> '',
 
+					// Generic wildcards:
+					// 	%s =	subitem - nests another group of items inside this one
+					//			used for array pairs, object members, function arguments, table lines etc
+					//  %- =	indentation string appropriate for this level of the output
+
+					// Debugger wildcards:
+					//	%t =	variable type
+					// 	%v =	simple variable value (using VARIABLE_OUTPUT_FORMAT) / array value	/ object member
+					// 	%k =	array key / object member name
+					//	%i =	"info"... object class / array count / string length / resource type / counter variable etc
+					//  %c =	collapsed string, if debug_start_collapsed is set (see below:)
+
+					'COLLAPSED_STRING'	  => '',
+
+					'VARIABLE_OUTPUT_FORMAT' => "%v",
+
+					'INDENT_STRING' 		=> "    ",
+
+					'HEADER_BLOCK' 			=> "\n",
+
+					'VARIABLES_HEADER'		=>	" [INFORMATION FOR %i VARS]",		// :NOTE: this header & footer are only used when dump()ing multiple variables
+					'VARIABLES_JOINER'		=>	"\n%- #%i : ",
+
+					'SINGLELINE_STRING_FORMAT'	=>	'String (%i chars): "%v"',
+					//	%l =	string line count
+					'MULTILINE_STRING_FORMAT'	=>	"String (%i chars, %l lines): \"%s%-\"",
+					//	%n =	string line number
+					//	%v =	string line text
+						'MULTILINE_STRING_LINE'	=>	"%-[%n] %v",
+						'MULTILINE_STRING_JOINER' => "\n",
+
+					'ARRAY_FORMAT'			=>	"Array (%i elements): [%s%-]",
+						'ARRAY_PAIR'		=>		'%-[%k] => %v',
+						'ARRAY_JOINER'		=>		"\n",
+
+					'OBJECT_FORMAT'			=>	"%i Object: {%s%-}",
+						'OBJECT_MEMBER'		=>		'%-[%k:%i] := %v',
+						'OBJECT_JOINER'		=>		"\n",
+
+					'GENERIC_FORMAT'		=>	"%t [%i]: (%s%-)",
+						'GENERIC_HEADER'	=>		"%s",
+						'GENERIC_BODY'		=>		"%s",
+						'GENERIC_FOOTER'	=>		"%s",
+						//	%i in this case is intended as a 'spin' variable for table row styling etc
+						'GENERIC_LINE'		=>		'%-| %s |',
+						'GENERIC_CELL'		=>		'%v',
+						'GENERIC_TITLED_CELL'	=>	'%v',	// title isn't really available in plaintext, so this is just the same string as above
+						'GENERIC_LINE_JOINER'	=>	"\n",
+						'GENERIC_CELL_JOINER'	=>	" | ",
+					'GENERIC_HEADER_CHARACTER' => '-',
+					'GENERIC_BORDER_CHARACTER' => '=',
+
+					'VARIABLES_FOOTER'		=>	"\n [%i VARS DEBUGGED]\n",			// :NOTE: this header & footer are only used when dump()ing multiple variables
+
+					'FOOTER_BLOCK' 			=> "\n",
+
+					// Benchmarker wildcards:
+					//	%i	=	benchmark tag
+					//  %n  =   benchmark call number
+					// 	%p	=	file path
+					//	%t	=	current execution time (s)		<-- these 4 also have %ct, %cm, %cdt & %cdm for HEX strings for shading in HTML mode
+					//	%m	=	current mem usage (KB)
+					//	%dt	=	time diff since last call (s)
+					//	%dm	=	memory diff since last call (KB)
+					//  %s  =   variables to dump
+					'BENCH_FORMAT'			=>	" [BENCH %n] %i : %p @ %t sec [%dt sec] %m KB [%dm KB] \n%s",
+
+					// This one is like a benchmark, except that it shows stats for pPHPide startup overhead
+					// Feel entirely free to disable this with the config var up top if it shits you!
+					// :NOTE:
+					//  - %t and %m are not used for this, only the overhead is shown.
+					//  - %p shows $_SERVER['PHP_SELF'], or server path of the executing script if unavailable
+					'STARTUP_STATS_FORMAT'		=>  "[[pPHPide loaded for %p]] %dt sec / %dm KB\n",
+					//	- %p is additionally not usefd for this one...
+					'INTERNAL_CALL_LOG_FORMAT'	=>  "[pPHPide invoked: %i] : %dt sec / %dm KB\n",
+
+					// Error handler wildcards:
+					//  %n =	error number (since script start)
+					//	%e =	error type
+					//	%m =	error message
+					// 	%p =	file path
+					'ERROR_FORMAT' 			=> " [ERROR %n] %e : %p \n  %m\n",
+
+					// Stack wildcards:
+					//	%c = 	class name
+					//	%t = 	call type
+					// 	%f =	function name
+					// 	%s =	function arguments
+					// 	%p =	file path
+					'STACK_FORMAT'			=>	" STACK: \n%s",
+					//  %i  =   function call number
+						'STACK_LINE'		=> 		"  [%i] %p : %c%t%f(%s)\n",
+						'STACK_JOINER'		=> 		", ",
 				),
 
 				// </pPHPide default theme>

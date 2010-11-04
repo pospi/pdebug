@@ -65,6 +65,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		static $SINGLELINE_STRING_FORMAT;
 		static $MULTILINE_STRING_FORMAT;
 			static $MULTILINE_STRING_LINE;
+			static $MULTILINE_STRING_JOINER;
 
 		static $ARRAY_FORMAT;			//	{<li>Array (# elements)<ul>
 			static $ARRAY_JOINER;		//		{
@@ -112,6 +113,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		static $INITIALISATION_LOG_STRING;  // holds initialisation log string accoring to the desired output format, for outputting later
 
+		static $CURRENT_INDENT_STRING = '';		// current indent level string to prepend to lines
+
 		//===============================
 
 		// Global wildcards:
@@ -119,6 +122,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		const WC_PATH			= '%p';
 		const WC_COLLAPSED_STR	= '%c';
 		const WC_COUNTER		= '%n';
+		const WC_INDENT			= '%-';
 
 		// Stack wildcards:
 		const WC_CLASS			= '%c';
@@ -135,8 +139,6 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		const WC_BENCH_MEM_C	 	= '%cm';
 		const WC_BENCH_TIMEDIFF_C	= '%cdt';
 		const WC_BENCH_MEMDIFF_C 	= '%cdm';
-
-		const WC_INTERNAL_STAT_CALLING_TYPE	= '%c';
 
 		// Debugger wildcards:
 		const WC_TYPE 			= '%t';
@@ -215,7 +217,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			$start_depth = 0;
 			$do_numbering = false;
 			if (count($vars) > 1) {
-				$out .= str_replace(PDebug::WC_INFO, count($vars), PDebug::$VARIABLES_HEADER);
+				$out .= str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, count($vars)), PDebug::$VARIABLES_HEADER);
 				$start_depth = 1;
 				$do_numbering = true;
 			}
@@ -229,13 +231,13 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			$i = 0;
 			foreach ($vars as $var) {
 				if ($do_numbering) {
-					$out .= str_replace(PDebug::WC_INFO, ++$i, PDebug::$VARIABLES_JOINER);
+					$out .= str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, ++$i), PDebug::$VARIABLES_JOINER);
 				}
 				$out .= PDebug::getDebugFor($var, $short_format);
 			}
 
 			if ($do_numbering) {
-				$out .= str_replace(PDebug::WC_INFO, count($vars), PDebug::$VARIABLES_FOOTER);
+				$out .= str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, count($vars)), PDebug::$VARIABLES_FOOTER);
 			}
 
 			PDebug::$START_COLLAPSED = $debug_last_collapsed;
@@ -338,7 +340,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		}
 
 		//====================================================================================================================================
-		//====================================================================================================================================
+		//============================================= UTILITY METHODS ======================================================================
 		//====================================================================================================================================
 
 		/**
@@ -376,9 +378,10 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				$color = PProtocolHandler::getColorBetween(array(0, PDebug::$STACK_COLOR_NEWEST), array($num_funcs, PDebug::$STACK_COLOR_OLDEST), $i++);
 
 				$out .= str_replace(
-					array(PDebug::WC_STACK_ROW_COLOR, PDebug::WC_PATH, PDebug::WC_CLASS, PDebug::WC_CALL_TYPE, PDebug::WC_FUNC_NAME, PDebug::WC_SUBITEM),
+					array(PDebug::WC_INDENT, PDebug::WC_INFO, PDebug::WC_STACK_ROW_COLOR,
+						  PDebug::WC_PATH, PDebug::WC_CLASS, PDebug::WC_CALL_TYPE, PDebug::WC_FUNC_NAME, PDebug::WC_SUBITEM),
 					array(
-						$color,
+						PDebug::$CURRENT_INDENT_STRING, $i, $color,
 						(isset($data['file']) ? PProtocolHandler::translatePathsIn($data['file'], $data['line']) : ''),
 						(isset($data['class'])	? $data['class'] : ''),
 						(isset($data['type'])	? $data['type']	 : ''),
@@ -388,10 +391,12 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					PDebug::$STACK_LINE);
 			}
 
+			$header_extra = $footer_extra = '';
 			$stack_bits = explode(PDebug::WC_SUBITEM, PDebug::$STACK_FORMAT);
-
-			$header_extra = $stack_bits[0];
-			$footer_extra = $stack_bits[1];
+			if (sizeof($stack_bits) == 2) {
+				$header_extra = $stack_bits[0];
+				$footer_extra = $stack_bits[1];
+			}
 
 		   	// print PDebug headers / footers if this is not an external (direct) function call
 		   	if (!$internal_call) {
@@ -409,7 +414,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 *
 		 * @return string
 		 */
-		public static function formatBench($tag = '', $bench_stats, $internal_call = false, $dump_vars = null, $diffs_only = false, $callee = '') {
+		public static function formatBench($tag = '', $bench_stats, $internal_call = false, $dump_vars = null, $diffs_only = false) {
 			if (!$internal_call) {
 				PDebug::goInternal();
 			}
@@ -438,25 +443,26 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			}
 			$var_extra = implode(PDebug::$STACK_JOINER, $var_extra);
 
-			// go back up the stack to get the the first external call
-			$trace_index = 0;
-			while (isset($trace[$trace_index]) && ( (isset($trace[$trace_index]['class']) && $trace[$trace_index]['class'] == 'PDebug') || !isset($trace[$trace_index]['file']) )) {
+			// few levels up the stack to get the the first external call
+			$trace_index = $internal_call ? 2 : 1;
+			$give_up_after = 10;
+			while (!isset($trace[$trace_index]['file']) && --$give_up_after > 0) {
 				$trace_index++;
 			}
-//print ($internal_call ? '<br/><b>1</b>: ' : '<br/><b>0</b>: ') .'idx '. $trace_index . ': - ';print_r($trace);
+
 			$out = str_replace(
-					array(PDebug::WC_INFO, PDebug::WC_PATH,
+					array(PDebug::WC_INDENT, PDebug::WC_INFO, PDebug::WC_PATH,
 						PDebug::WC_BENCH_TIME, PDebug::WC_BENCH_MEM, PDebug::WC_BENCH_TIMEDIFF, PDebug::WC_BENCH_MEMDIFF,
 						PDebug::WC_BENCH_TIME_C, PDebug::WC_BENCH_MEM_C, PDebug::WC_BENCH_TIMEDIFF_C, PDebug::WC_BENCH_MEMDIFF_C,
-						PDebug::WC_SUBITEM, PDebug::WC_COUNTER, PDebug::WC_INTERNAL_STAT_CALLING_TYPE),
+						PDebug::WC_SUBITEM, PDebug::WC_COUNTER),
 					array(
+						PDebug::$CURRENT_INDENT_STRING,
 						$tag,
 						PProtocolHandler::translatePathsIn($trace[$trace_index]['file'], $trace[$trace_index]['line']),
 						$this_call, $mem_usage, $time_diff, $mem_diff,
 						$this_call_c, $mem_usage_c, $time_diff_c, $mem_diff_c,
 						$var_extra,
-						PDebug::$BENCH_COUNT++,
-						$callee,
+						(!$diffs_only ? PDebug::$BENCH_COUNT++ : ''),
 					),
 					($diffs_only ? PDebug::$INTERNAL_CALL_LOG_FORMAT : PDebug::$BENCH_FORMAT));
 
@@ -466,8 +472,11 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				list($header_extra, $footer_extra) = PDebug::verifyHeaderIncludes(PDebug::$HEADER_BLOCK, PDebug::$FOOTER_BLOCK);
 				PDebug::goExternal($out, 'bench');
 			}
+
 		   	return $header_extra . $out . $footer_extra;
 		}
+
+		//====================================================================================================================================
 
 		public static function __shadedMem($usage) {
 			$color = PProtocolHandler::getColorBetween(array(PDebug::$BENCHMARKER_MEM_VALUE_LOW, PDebug::$BENCHMARKER_COLOR_LOW), array(PDebug::$BENCHMARKER_MEM_VALUE_HIGH, PDebug::$BENCHMARKER_COLOR_HIGH), $usage);
@@ -491,6 +500,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			return array($time, $color);
 		}
 
+		//====================================================================================================================================
+
 		/**
 		 * Call this to return wrapper text for an external function call's output,
 		 * in the current output mode
@@ -498,7 +509,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		private static function verifyHeaderIncludes($header_extra = null, $footer_extra = null) {
 			$header = $footer = '';
 
-			if (!PDebug::$HAS_OUTPUT_HEADER && PProtocolHandler::$CURRENT_OUTPUT_MODE == PProtocolHandler::MODE_HTML) {
+			if (!PDebug::$HAS_OUTPUT_HEADER && PProtocolHandler::isOutputtingHtml()) {
 				PDebug::$HAS_OUTPUT_HEADER = true;
 				$header = PDebug::$COMMON_HEADER . $header;
 			}
@@ -514,7 +525,6 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				PDebug::$LAST_CALL_TIME = microtime(true);
 				PDebug::$LAST_MEM_USAGE	= memory_get_usage();
 			}
-			PDebug::$PDEBUG_LOOP_COUNT = 0;
 		}
 
 		private static function goExternal(&$out = null, $tag = '') {
@@ -528,7 +538,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					'dt'=> $dt,
 					'dm'=> $dm,
 				);
-				$out = PDebug::formatBench($tag, $dump_stats, true, null, true, $tag) . $out;
+				$out = PDebug::formatBench($tag, $dump_stats, true, null, true) . $out;
 			}
 
 			// recalculate this to get the revised estimate at the *absolute* end
@@ -541,6 +551,14 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			}
 		}
 
+		private static function increaseIndent() {
+			PDebug::$CURRENT_INDENT_STRING .= PDebug::$INDENT_STRING;
+		}
+
+		private static function decreaseIndent() {
+			PDebug::$CURRENT_INDENT_STRING = substr(PDebug::$CURRENT_INDENT_STRING, 0, strlen(PDebug::$INDENT_STRING) * -1);
+		}
+
 		private static function refreshThemes() {
 			foreach (PDebug::$DEBUGGER_STYLES[PProtocolHandler::$CURRENT_OUTPUT_MODE] as $var => $value) {
 				PDebug::$$var = $value;
@@ -550,9 +568,13 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		// dont explode server into infinite looptown™ plz kthx
 		private static function sanityCheck() {
 			if (++PDebug::$PDEBUG_LOOP_COUNT > 500000) {
-				die(PDebug::$CURRENT_OUTPUT_MODE == PProtocolHandler::MODE_HTML ? '<h3>Circular reference detected - aborting!</h3>' : 'Circular reference detected - aborting!');
+				die(PDebug::isOutputtingHtml() ? '<h3>Circular reference detected - aborting!</h3>' : 'Circular reference detected - aborting!');
 			}
 		}
+
+		//====================================================================================================================================
+		//====================================================================================================================================
+		//====================================================================================================================================
 
 		/**
 		 * This confines all our type-checking into one function, rather than checking for each type
@@ -564,15 +586,19 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		private static function getDebugFor($var, $short_format = false, &$ref_chain = null) {
 			PDebug::sanityCheck();
 
+			$out = '';
+
 			if (is_object($var)) {
-				return PDebug::debug_object($var, $short_format, $ref_chain);
+				$out = PDebug::debug_object($var, $short_format, $ref_chain);
 			} else if (is_array($var)) {
-				return PDebug::debug_array($var, $short_format, $ref_chain);
+				$out = PDebug::debug_array($var, $short_format, $ref_chain);
 			} else if (is_resource($var)) {
-				return PDebug::debug_resource($var, $short_format);
+				$out = PDebug::debug_resource($var, $short_format);
 			} else {
-				return PDebug::debug_var($var, $short_format);
+				$out = PDebug::debug_var($var, $short_format);
 			}
+
+			return $out;
 		}
 
 		//======================================================================================
@@ -587,6 +613,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 */
 		private static function debug_resource($var, $short_format = false) {
 
+			PDebug::increaseIndent();
+
 			$resource_type = get_resource_type($var);
 
 			// fill with resource content blocks, to implode() later...
@@ -597,18 +625,26 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 			$resource_type_inc = dirname(__FILE__) . '/resource/' . str_replace(' ', '_', $resource_type) . '.inc.php';
 
+			// this will be the length of extra characters in the line after substitutions, to use in
+			// includes to calculate the max display length for columns / headers etc
+			$line_length_offset = strlen(str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM), array('', '', '', ''), PDebug::$GENERIC_LINE));
+
 			if (file_exists($resource_type_inc)) {
 				include($resource_type_inc);
 			} else {
-				$resource_table_rows[] = str_replace(array(PDebug::WC_TYPE, PDebug::WC_VAR, PDebug::WC_INFO), array('unknown', 'UNSUPPORTED RESOURCE TYPE', ''), PDebug::$VARIABLE_OUTPUT_FORMAT);
+				$resource_table_rows[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, 'unknown', 'UNSUPPORTED RESOURCE TYPE', ''), PDebug::$VARIABLE_OUTPUT_FORMAT);
 			}
 
 			$table_contents = array();
-			$table_contents[] = str_replace(array(PDebug::WC_TYPE, PDebug::WC_SUBITEM), array('resource', implode(PDebug::$GENERIC_LINE_JOINER, $resource_header_rows)), PDebug::$GENERIC_HEADER);
-			$table_contents[] = str_replace(array(PDebug::WC_TYPE, PDebug::WC_SUBITEM), array('resource', implode(PDebug::$GENERIC_LINE_JOINER, $resource_table_rows)), PDebug::$GENERIC_BODY);
-			$table_contents[] = str_replace(array(PDebug::WC_TYPE, PDebug::WC_SUBITEM), array('resource', implode(PDebug::$GENERIC_LINE_JOINER, $resource_footer_rows)), PDebug::$GENERIC_FOOTER);
+			$table_contents[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_SUBITEM), array(PDebug::$CURRENT_INDENT_STRING, 'resource', implode(PDebug::$GENERIC_LINE_JOINER, $resource_header_rows)), PDebug::$GENERIC_HEADER)	. (sizeof($resource_table_rows) || sizeof($resource_footer_rows) ? PDebug::$GENERIC_LINE_JOINER : '');
+			$table_contents[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_SUBITEM), array(PDebug::$CURRENT_INDENT_STRING, 'resource', implode(PDebug::$GENERIC_LINE_JOINER, $resource_table_rows)), 	PDebug::$GENERIC_BODY)		. (sizeof($resource_footer_rows) ? PDebug::$GENERIC_LINE_JOINER : '');
+			$table_contents[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_SUBITEM), array(PDebug::$CURRENT_INDENT_STRING, 'resource', implode(PDebug::$GENERIC_LINE_JOINER, $resource_footer_rows)), PDebug::$GENERIC_FOOTER);
 
-			return str_replace(array(PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM, PDebug::WC_COLLAPSED_STR), array($resource_type, print_r($var, true), implode(PDebug::$GENERIC_LINE_JOINER, $table_contents), ((PDebug::$START_COLLAPSED || $short_format) ? PDebug::$COLLAPSED_STRING : '') ), $resource_output_format_str);
+			$compress = PDebug::$START_COLLAPSED || $short_format;
+
+			PDebug::decreaseIndent();
+
+			return str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM, PDebug::WC_COLLAPSED_STR), array(PDebug::$CURRENT_INDENT_STRING, $resource_type, print_r($var, true), (!$compress || PProtocolHandler::isOutputtingHtml() ? PDebug::$GENERIC_LINE_JOINER . implode('', $table_contents) . PDebug::$GENERIC_LINE_JOINER : ''), ($compress ? PDebug::$COLLAPSED_STRING : '') ), $resource_output_format_str);
 		}
 
 		/**
@@ -626,9 +662,11 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			foreach ($ref_chain as $ref_val) {
 				// :TODO: linkage! :D
 				if ($ref_val === $var) {
-					return str_replace(array(PDebug::WC_TYPE, PDebug::WC_VAR, PDebug::WC_INFO), array('unknown', '* RECURSION *', ''), PDebug::$VARIABLE_OUTPUT_FORMAT);
+					return str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, 'unknown', '* RECURSION *', ''), PDebug::$VARIABLE_OUTPUT_FORMAT);
 				}
 			}
+
+			PDebug::increaseIndent();
 
 			// push this object into the active references list, to prevent recursive references
 			array_push($ref_chain, $var);
@@ -648,12 +686,16 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 				$value_dbg  = PDebug::getDebugFor($val, $short_format, $ref_chain);
 
-				$obj_contents[] = str_replace(array(PDebug::WC_KEY, PDebug::WC_INFO, PDebug::WC_VAR), array($key, $key_type, $value_dbg), PDebug::$OBJECT_MEMBER);
+				$obj_contents[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY, PDebug::WC_INFO, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $key, $key_type, $value_dbg), PDebug::$OBJECT_MEMBER);
 			}
 
 			array_pop($ref_chain);
 
-			return str_replace(array(PDebug::WC_INFO, PDebug::WC_SUBITEM, PDebug::WC_COLLAPSED_STR), array(get_class($var), implode(PDebug::$OBJECT_JOINER, $obj_contents), ((PDebug::$START_COLLAPSED || $short_format) ? PDebug::$COLLAPSED_STRING : '') ), PDebug::$OBJECT_FORMAT);
+			$compress = PDebug::$START_COLLAPSED || $short_format || sizeof($obj_contents) == 0;
+
+			PDebug::decreaseIndent();
+
+			return str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO, PDebug::WC_SUBITEM, PDebug::WC_COLLAPSED_STR), array(PDebug::$CURRENT_INDENT_STRING, get_class($var), (!$compress || PProtocolHandler::isOutputtingHtml() ? PDebug::$OBJECT_JOINER . implode(PDebug::$OBJECT_JOINER, $obj_contents) . PDebug::$OBJECT_JOINER : ''), ($compress ? PDebug::$COLLAPSED_STRING : '') ), PDebug::$OBJECT_FORMAT);
 		}
 
 		/**
@@ -670,7 +712,9 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				$ref_chain = array();
 			}
 
-			if (PProtocolHandler::$CURRENT_OUTPUT_MODE == PProtocolHandler::MODE_HTML) {
+			PDebug::increaseIndent();
+
+			if (PProtocolHandler::isOutputtingHtml()) {
 				$var_type = gettype($var);
 			} else {
 				// pad to 7 chars cos 'boolean' is the longest
@@ -682,10 +726,17 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				$key_dbg	= PDebug::getDebugFor($k, $short_format, $ref_chain);
 				$value_dbg  = PDebug::getDebugFor($v, $short_format, $ref_chain);
 
-				$arr_contents[] = str_replace(array(PDebug::WC_KEY, PDebug::WC_VAR), array($key_dbg, $value_dbg), PDebug::$ARRAY_PAIR);
+				$arr_contents[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $key_dbg, $value_dbg), PDebug::$ARRAY_PAIR);
 			}
 
-			return str_replace(array(PDebug::WC_INFO, PDebug::WC_SUBITEM, PDebug::WC_COLLAPSED_STR), array(sizeof($var), implode(PDebug::$ARRAY_JOINER, $arr_contents), ((PDebug::$START_COLLAPSED || $short_format) ? PDebug::$COLLAPSED_STRING : '') ), PDebug::$ARRAY_FORMAT);
+			$arr_size = sizeof($var);
+
+			$compress = PDebug::$START_COLLAPSED || $short_format || $arr_size == 0;
+			$draw_contents = !$compress || (PProtocolHandler::isOutputtingHtml() && !PProtocolHandler::$OUTPUT_HTML_AS_PLAIN);
+
+			PDebug::decreaseIndent();
+
+			return str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO, PDebug::WC_SUBITEM, PDebug::WC_COLLAPSED_STR), array(($arr_size > 0 ? PDebug::$CURRENT_INDENT_STRING : ''), $arr_size, ($draw_contents ? PDebug::$ARRAY_JOINER . implode(PDebug::$ARRAY_JOINER, $arr_contents) . PDebug::$ARRAY_JOINER : ''), ($compress ? PDebug::$COLLAPSED_STRING : '') ), PDebug::$ARRAY_FORMAT);
 		}
 
 		/**
@@ -737,45 +788,28 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				$var_type = 'unknown';
 			}
 
-			if (PProtocolHandler::$CURRENT_OUTPUT_MODE != PProtocolHandler::MODE_HTML) {
+			if (!PProtocolHandler::isOutputtingHtml()) {
 				// pad to 7 chars cos 'boolean' is the longest
 				$var_type = str_pad(strtoupper($var_type), 7, ' ', STR_PAD_RIGHT);
 			}
 
 			if (!is_string($var)) {
-				return str_replace(array(PDebug::WC_TYPE, PDebug::WC_VAR), array($var_type, $modified_var), PDebug::$VARIABLE_OUTPUT_FORMAT);
+				return str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $var_type, $modified_var), PDebug::$VARIABLE_OUTPUT_FORMAT);
 			} else {
 				if ($short_format || $line_count == 1) {
-					return str_replace(array(PDebug::WC_INFO, PDebug::WC_VAR), array($string_length, $modified_var), PDebug::$SINGLELINE_STRING_FORMAT);
+					return str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO,	PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $string_length, $modified_var), PDebug::$SINGLELINE_STRING_FORMAT);
 				} else {
+					PDebug::increaseIndent();
+
+					$modified_var = PProtocolHandler::getStringLines($modified_var);
 					$string_lines = array();
-
-					$modified_var = preg_split(PProtocolHandler::$LINE_ENDING_REGEX, $modified_var, -1, PREG_SPLIT_DELIM_CAPTURE);
-					$line_num = 1;
-					$last_was_newline = false;
-
-					for ($i = 0; $i < sizeof($modified_var); ++$i) {
-						$piece = $modified_var[$i];
-
-						// if the previous line wasn't a newline
-						if (!$last_was_newline) {
-							// if this is a newline, add the newline to output...
-							if ($piece == "\r\n" || $piece == "\r" || $piece == "\n") {
-								++$line_num;
-								$line = $piece;				// set the text for the next line to include the newline (so copy/pasting is ok)
-								$last_was_newline = true;	// flag that this was a newline in case the next one is too
-								continue;
-							} else {	// ...otherwise we start off blank for the next line
-								$line = '';
-							}
-						}
-
-						$line .= $piece;
-						$last_was_newline = false;
-						$string_lines[] = str_replace(array(PDebug::WC_COUNTER, PDebug::WC_VAR), array($line_num, $line), PDebug::$MULTILINE_STRING_LINE);
+					foreach ($modified_var as $line => $text) {
+						$string_lines[$line] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_COUNTER, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $line, $text), PDebug::$MULTILINE_STRING_LINE);
 					}
+
+					PDebug::decreaseIndent();
 				}
-				return str_replace(array(PDebug::WC_INFO, PDebug::WC_SUBITEM, PDebug::WC_STRING_LINES), array($string_length, implode('', $string_lines), $line_count), PDebug::$MULTILINE_STRING_FORMAT);
+				return str_replace(array(PDebug::WC_INDENT, PDebug::WC_INFO, PDebug::WC_SUBITEM, PDebug::WC_STRING_LINES), array(PDebug::$CURRENT_INDENT_STRING, $string_length, PDebug::$MULTILINE_STRING_JOINER . implode(PDebug::$MULTILINE_STRING_JOINER, $string_lines) . PDebug::$MULTILINE_STRING_JOINER, $line_count), PDebug::$MULTILINE_STRING_FORMAT);
 			}
 		}
 
@@ -838,7 +872,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				$err = 'CAUGHT EXCEPTION';
 			}
 
-			$err_msg = str_replace(array(PDebug::WC_ERROR, PDebug::WC_PATH, PDebug::WC_ERROR_MESSAGE, PDebug::WC_COUNTER), array($err, PProtocolHandler::translatePathsIn($file_name, $line_number), $error_message, PDebug::$ERROR_COUNT++), PDebug::$ERROR_FORMAT);
+			$err_msg = str_replace(array(PDebug::WC_INDENT, PDebug::WC_ERROR, PDebug::WC_PATH, PDebug::WC_ERROR_MESSAGE, PDebug::WC_COUNTER), array(PDebug::$CURRENT_INDENT_STRING, $err, PProtocolHandler::translatePathsIn($file_name, $line_number), $error_message, PDebug::$ERROR_COUNT++), PDebug::$ERROR_FORMAT);
 
 			// pretend we're from a backtrace call so we don't get headers output
 			$trace = PDebug::$USE_STACK_TRACE ? PDebug::trace(true) : '';
@@ -963,13 +997,23 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 	$html_theme = isset($_PDEBUG_OPTIONS['html_theme']) ? $_PDEBUG_OPTIONS['html_theme'] : 'pPHPide';
 	$text_theme = isset($_PDEBUG_OPTIONS['plaintext_theme']) ? $_PDEBUG_OPTIONS['plaintext_theme'] : 'pPHPide';
 	$json_theme = isset($_PDEBUG_OPTIONS['json_theme']) ? $_PDEBUG_OPTIONS['json_theme'] : 'pPHPide';
-	foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_TEXT][$html_theme] as $layout_property => $value) {
+
+	if ($html_theme == 'plaintext') {
+		foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_TEXT][$text_theme] as $layout_property => $value) {
+			PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML][$layout_property] = $value;
+		}
+		PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML]['HEADER_BLOCK'] = '<pre>' . PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML]['HEADER_BLOCK'];
+		PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML]['FOOTER_BLOCK'] .= '</pre>';
+		PProtocolHandler::$OUTPUT_HTML_AS_PLAIN = true;
+	} else {
+		foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_HTML][$html_theme] as $layout_property => $value) {
+			PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML][$layout_property] = $value;
+		}
+	}
+	foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_TEXT][$text_theme] as $layout_property => $value) {
 		PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_TEXT][$layout_property] = $value;
 	}
-	foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_HTML][$html_theme] as $layout_property => $value) {
-		PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_HTML][$layout_property] = $value;
-	}
-	foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_JSON][$html_theme] as $layout_property => $value) {
+	foreach ($_PDEBUG_OPTIONS['DEBUGGER_THEMES'][PProtocolHandler::MODE_JSON][$json_theme] as $layout_property => $value) {
 		PDebug::$DEBUGGER_STYLES[PProtocolHandler::MODE_JSON][$layout_property] = $value;
 	}
 	unset($html_theme);
