@@ -1,0 +1,1 @@
+C:\path\to\plink.exe -load local -i C:\path\to\privkey.ppk -batch komodo `echo %1 ^| sed -e 's/%%20/ /g'`

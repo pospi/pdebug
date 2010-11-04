@@ -32,6 +32,7 @@
 			'application_root' 					=> '/var/www/html/',		// override your web application's root path if necessary (defaults to $_SERVER['DOCUMENT_ROOT'])
 			'use_debugger' 						=> true,	// enable debugger with variable folding, hilighting, stack trace and other fanciness
 			'auto_stack_trace'					=> true,	// enable stack trace in debugger & error handler
+			'shallow_stack_trace'				=> true,	// when true, only prints object names in stack trace. Otherwise, full debug is output (this only ever happens in HTML mode)
 			'use_error_handler' 				=> true,	// enable error handler with stack trace and other fanciness
 			'show_startup_stats'				=> false,	// enable displaying the memory & procecessing overheads of initialising pdebug
 
@@ -86,12 +87,21 @@
 		//		  you should keep it consistent with the HTML equivalent for encapsulated string path detection to work in HTML
 		//
 
+/*			// Komodo Edit
+			// :NOTE: because this format contains spaces, you will need to replace %20's in the URI using sed.
+			// If on windows with your IDE in linux, put the following in a batch file and send your commands to it like: file.bat "%1" (note quotes)
+			//		C:\path\to\plink.exe -load local -i C:\path\to\privkey.ppk -batch komodo `echo %1 ^| sed -e 's/%%20/ /g'`
+			'output_path_format'				=> '<a href="pdebug:%p#%l" title="%p(%l)">%f(%l)</a>',
+			'output_path_format_plaintext'		=> '%p%l',
+			'output_line_format'				=> '%l',
+			'output_line_format_plaintext'		=> '%l',
+*/
 			// Ultraedit 13-, UEStudio 6.0-, CEdit, ZendIDE etc
-/*			'output_path_format'				=> '<a href="pdebug:%p%l" title="%p%l">%f%l</a>',
+			'output_path_format'				=> '<a href="pdebug:%p%l" title="%p%l">%f%l</a>',
 			'output_path_format_plaintext'		=> '%p%l',
 			'output_line_format'				=> '/%l',					// substituted into output_path_format at %l
 			'output_line_format_plaintext'		=> '/%l',					// substituted into output_path_format_plaintext at %l
-
+/*
 			// Ultraedit 14+, UEStudio 6.5+
 			'output_path_format'				=> '<a href="pdebug:%p%l" title="%p%l">%f%l</a>',
 			'output_path_format_plaintext'		=> '%p%l',
@@ -103,19 +113,19 @@
 			'output_path_format_plaintext'		=> '%p%l',
 			'output_line_format'				=> '(%l)',					// substituted into output_path_format at %l
 			'output_line_format_plaintext'		=> '(%l)',					// substituted into output_path_format_plaintext at %l
-*/
-			// IDEs not supporting line delimiters (last resort)
-			'output_path_format'				=> '<a href="pdebug:%p">%p%l</a>',
-			'output_path_format_plaintext'		=> '%p',
-			'output_line_format'				=> '(%l)',
-			'output_line_format_plaintext'		=> '(%l)',
 
+			// IDEs not supporting line delimiters (last resort)
+			'output_path_format'				=> '<a href="pdebug:%p" title="%p%l">%f%l</a>',
+			'output_path_format_plaintext'		=> '%p%l',
+			'output_line_format'				=> ':%l',
+			'output_line_format_plaintext'		=> ':%l',
+*/
 	//===================================================================================================================
 	//===================================================================================================================
-	
+
 		'DEBUGGER_THEMES' => array()		// will contain 'html', 'text' and 'json'
 	);
-	
+
 	// load theme files
 	$themePath = dirname(__FILE__) . '/themes/';
 	$toLoad = array(
@@ -123,7 +133,7 @@
 		'text' => $themePath . $_PDEBUG_OPTIONS['plaintext_theme'] . '/text.php',
 		'json' => $themePath . $_PDEBUG_OPTIONS['json_theme'] . '/json.php'
 	);
-	
+
 	foreach ($toLoad as $type => $path) {
 		if (!file_exists($path)) {
 			die("PDebug error: could not locate specified theme file ($path)");

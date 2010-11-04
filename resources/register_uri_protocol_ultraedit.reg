@@ -17,7 +17,7 @@ Windows Registry Editor Version 5.00
 @="C:\\launchurl.exe \"%1\""
 
 [HKEY_CURRENT_USER\Software\URL Protocol Launcher]
-"pdebug"="C:\\Program Files\\UltraEdit\\UEdit32.exe \"%1\""
+"pdebug"="C:\\Program Files (x86)\\UEStudio\\UEStudio.exe \"%1\""
 
 ; An example of running a command on a remote machine via putty. Private key must be
 ; saved without a passphrase, or loaded via pageant (and omit the -i) before attempting.
