@@ -7,6 +7,9 @@
 //					trace();
 //					bench(); 				{...some code happens...}	bench();
 //					bench($benchmark_tag);	{...some code happens...}	bench($benchmark_tag_2);
+//					bench([$benchmark_tag, true]);	{...some code happens...}	bench([$benchmark_tag, true]);		<-- store this benchmark for use as a separate benching thread later
+//					bench([$benchmark_tag, $since]);	{...some code happens...}	bench([$benchmark_tag, $since]);		<-- compute/update time since this previously stored benchmark
+//					bench(); 				{...some code happens...}	bench();
 //
 /*================================================================================
 	pPHPide - debugger class
@@ -118,7 +121,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		static $CURRENT_INDENT_STRING = '';		// current indent level string to prepend to lines
 
-		//===============================
+		//============================================================================================================================
 
 		// Global wildcards:
 		const WC_SUBITEM		= '%s';
@@ -156,7 +159,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		const WC_ERROR 			= '%e';
 		const WC_ERROR_MESSAGE	= '%m';
 
-		//===============================
+		//============================================================================================================================
 
 		static $USE_STACK_TRACE = true;
 
@@ -185,15 +188,16 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		static $PDEBUG_BENCH_START = 0;
 		static $PDEBUG_LOOP_COUNT = 0;
+
+		static $PDEBUG_BENCH_TIMES = array();	// benchmarks can be flagged to store their values in here, and compared against later
 		static $PDEBUG_PREV_BENCH = 0;
 		static $PDEBUG_PREV_MEM = 0;
+		static $LAST_CALL_TIME = 0;
+		static $LAST_MEM_USAGE = 0;
 
 		static $DEFER_COUNT = 0;
 		static $ERROR_COUNT = 0;
 		static $BENCH_COUNT = 0;
-
-		static $LAST_CALL_TIME = 0;
-		static $LAST_MEM_USAGE = 0;
 
 		static $HAS_OUTPUT_HEADER 	= false;	// include common CSS / JS header for debugging HTML output on first call
 
@@ -291,7 +295,27 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				PDebug::goInternal();
 			}
 
-			$out = PDebug::formatBench($tag, PDebug::getBench(true), true, $vars);
+			$store_at = null;
+			$compute_since = null;
+			$time_since_output = null;		// for formatBench to display time since stamp
+			if (is_array($tag)) {
+				$timeSince = $tag[1];
+				$tag = $tag[0];
+
+				if ($timeSince === true) {
+					// store this stamp into the tag for later when flagged
+					$store_call = $tag;
+				} else if (is_string($timeSince)) {
+					// compute this benchmark difference against the current timestamp stored in this key
+					$compute_since = PDebug::$PDEBUG_BENCH_TIMES[$timeSince];
+					$time_since_output = $timeSince;
+				}
+			}
+
+			$benchData = PDebug::getBench(true, $compute_since, $store_call);
+			$benchData['since'] = $time_since_output;
+
+			$out = PDebug::formatBench($tag, $benchData, true, $vars);
 
 			// print PDebug headers / footers if this is not an external (direct) function call
 			$header_extra = $footer_extra = '';
@@ -311,7 +335,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 *			time difference between this call and previous call (s)
 		 *		]
 		 */
-		public static function getBench($internal_call = false) {
+		public static function getBench($internal_call = false, &$since = null, $store = null) {
 			if (!$internal_call) {
 				PDebug::goInternal();
 			}
@@ -322,15 +346,35 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				$time_diff = 0;  // otherwise we'll get some meaningless small offset...
 			}
 
+			if (!$since) {
+				$previousTime	= PDebug::$PDEBUG_PREV_BENCH;
+				$previousMem	= PDebug::$PDEBUG_PREV_MEM;
+			} else {
+				$previousTime	= $since[0];	//time
+				$previousMem	= $since[1];	//mem
+			}
+
 			$mem_usage = memory_get_usage();
 			$this_call = microtime(true);
 			if (!isset($time_diff)) {
-				$time_diff = round($this_call - PDebug::$PDEBUG_PREV_BENCH, 5);
+				$time_diff = round($this_call - $previousTime, 5);
 			}
-			$mem_diff  = $mem_usage - PDebug::$PDEBUG_PREV_MEM;
+			$mem_diff  = $mem_usage - $previousMem;
 
-			PDebug::$PDEBUG_PREV_BENCH = $this_call;
-			PDebug::$PDEBUG_PREV_MEM = $mem_usage;
+			if (!$since) {
+				PDebug::$PDEBUG_PREV_BENCH = $this_call;
+				PDebug::$PDEBUG_PREV_MEM = $mem_usage;
+			} else {
+				$since[0] = $this_call;	//time
+				$since[1] = $mem_usage;	//mem
+			}
+
+			if (is_string($store)) {
+				PDebug::$PDEBUG_BENCH_TIMES[$store] = array(
+					$this_call,
+					$mem_usage
+				);
+			}
 
 			if (!$internal_call) {
 				PDebug::goExternal();
@@ -441,6 +485,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			$mem_diff  = $mem_diff[0];
 			$time_diff = $time_diff[0];
 
+			$time_relative = $bench_stats['since'];
+
 			// dump variables along with the benchmarker if we have opted to
 			$var_extra = array();
 			if (is_array($dump_vars)) {
@@ -468,7 +514,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 						PDebug::WC_SUBITEM, PDebug::WC_COUNTER),
 					array(
 						PDebug::$CURRENT_INDENT_STRING,
-						$tag,
+						($time_relative ? $time_relative : '*') . ' -> ' . $tag,
 						$trace_call_location_string,
 						$this_call, $mem_usage, $time_diff, $mem_diff,
 						$this_call_c, $mem_usage_c, $time_diff_c, $mem_diff_c,

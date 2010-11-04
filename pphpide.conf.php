@@ -141,7 +141,7 @@
 					'COMMON_HEADER'	=> '<style type="text/css">'
 
 									// general debugger layout
-										. '	.PDebug { 	white-space: normal; font-family: "trebuchet ms",helvetica,tahoma,sans-serif; font-size: 11px; line-height: 16px; background: #F0F6FF; margin: 0; padding: 3px; border-radius: 5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; border: 2px solid #E18E03; margin: 1px; display: block; }'
+										. '	.PDebug { 	white-space: normal; font-family: "trebuchet ms",helvetica,tahoma,sans-serif; font-size: 10px; line-height: 11px; background: #F0F6FF; margin: 0; padding: 3px; border-radius: 5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; border: 1px solid #E18E03; margin: 0px; display: block; }'
 										. '	.PDebug li { list-style: none; line-height: 18px; }'
 										. ' .PDebug ul { white-space: normal; padding: 0; margin: 0 2em; min-width: 200px; }'
 										. ' .PDebug .info { font-weight: bold; color: #E18E03; }'
@@ -463,7 +463,7 @@
 					//	%dt	=	time diff since last call (s)
 					//	%dm	=	memory diff since last call (KB)
 					//  %s  =   variables to dump
-					'BENCH_FORMAT'			=>	'<li class="bench" id="PDebug_bench%n">%i : %p @ <span style="color: %ct">%t</span>s [<span style="color: %cdt">%dt</span>s] <span style="color: %cm">%m</span>K [<span style="color: %cdm">%dm</span>K]<br />%-<ul>%s</ul></li>' . "\n",
+					'BENCH_FORMAT'			=>	'<li class="bench" id="PDebug_bench%n"><div style="width:50%;float:left;text-align:right;">%i : %p&nbsp;</div><div style="width:50%;float:left;font-family:monospace;">&nbsp;@ <span style="color: %ct">%t</span>s [<span style="color: %cdt">%dt</span>s] <span style="color: %cm">%m</span>K [<span style="color: %cdm">%dm</span>K]</div><br />%-<ul>%s</ul></li>' . "\n",
 
 					// This one is like a benchmark, except that it shows stats for pPHPide startup overhead
 					// Feel entirely free to disable this with the config var up top if it shits you!
