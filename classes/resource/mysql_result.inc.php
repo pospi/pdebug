@@ -10,25 +10,6 @@
 	$num_rows = mysql_num_rows($var);
 	$num_fields = mysql_num_fields($var);
 
-	// debug table: info header rows
-	$cells = array();
-	$cells[] = str_replace(array('%t', '%v'),	array('', 'Number of rows:'), 	PDebug::$GENERIC_CELL);
-	$cells[] = str_replace(array('%t', '%v'),	array('', $num_rows),			PDebug::$GENERIC_CELL);
-	for ($i = 0; $i < $num_fields - 2; ++$i) {
-		$cells[] = str_replace(array('%t', '%v'),	array('', ''),	PDebug::$GENERIC_CELL);
-	}
-
-	$resource_footer_rows[] = str_replace(array('%t', '%i', '%s'), array('', '', implode(PDebug::$GENERIC_CELL_JOINER, $cells)), PDebug::$GENERIC_LINE);
-
-	$cells = array();
-	$cells[] = str_replace(array('%t', '%v'),	array('', 'Number of fields:'),	PDebug::$GENERIC_CELL);
-	$cells[] = str_replace(array('%t', '%v'),	array('', $num_fields), PDebug::$GENERIC_CELL);
-	for ($i = 0; $i < $num_fields - 2; ++$i) {
-		$cells[] = str_replace(array('%t', '%v'),	array('', ''),	PDebug::$GENERIC_CELL);
-	}
-
-	$resource_footer_rows[] = str_replace(array('%t', '%i', '%s'), array('', '', implode(PDebug::$GENERIC_CELL_JOINER, $cells)), PDebug::$GENERIC_LINE);
-
 	// initialise vars
 	$columns 	 = array();
 	$col_widths  = array();
@@ -86,26 +67,47 @@
 			$row_count++;
 		}
 
-		$full_width = array_sum($col_widths) + count($col_widths) * 3 + 1;		// add column padding etc
+		// adjust full width for column padding and output length etc
+		$full_width = array_sum($col_widths) - $line_length_offset + (count($col_widths) * strlen(PDebug::$GENERIC_CELL_JOINER) + 1);
 
 		mysql_data_seek($var, 0);												// reset resource pointer again
 
-		// resource table: info header plaintext formatting
+		// resource table: info header rows
+		$cells = array();
+		$cells[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR),	array(PDebug::$CURRENT_INDENT_STRING, '', str_pad('Number of rows:   ' . $num_rows, $full_width)), 	PDebug::$GENERIC_CELL);
+		if (PProtocolHandler::isOutputtingHtml()) {
+			// add empty table cells for HTML output mode
+			for ($i = 0; $i < $num_fields - 1; ++$i) {
+				$cells[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR),	array(PDebug::$CURRENT_INDENT_STRING, '', ''),	PDebug::$GENERIC_CELL);
+			}
+		}
+		$resource_footer_rows[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM), array(PDebug::$CURRENT_INDENT_STRING, '', '', implode(PDebug::$GENERIC_CELL_JOINER, $cells)), PDebug::$GENERIC_LINE);
+
+		$cells = array();
+		$cells[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR),	array(PDebug::$CURRENT_INDENT_STRING, '', str_pad('Number of fields: ' . $num_fields, $full_width)),	PDebug::$GENERIC_CELL);
+		if (PProtocolHandler::isOutputtingHtml()) {
+			// add empty table cells for HTML output mode
+			for ($i = 0; $i < $num_fields - 1; ++$i) {
+				$cells[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR),	array(PDebug::$CURRENT_INDENT_STRING, '', ''),	PDebug::$GENERIC_CELL);
+			}
+		}
+		$resource_footer_rows[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM), array(PDebug::$CURRENT_INDENT_STRING, '', '', implode(PDebug::$GENERIC_CELL_JOINER, $cells)), PDebug::$GENERIC_LINE);
+
+		// resource table: plaintext formatting table separators
 		if (PDebug::$GENERIC_BORDER_CHARACTER) {
-			$divider_row = str_replace(array('%t', '%i', '%s'), array('', '', str_repeat(PDebug::$GENERIC_BORDER_CHARACTER, $full_width - 2)), PDebug::$GENERIC_LINE);
-			$resource_header_rows[] = $divider_row;
+			$divider_row = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM), array(PDebug::$CURRENT_INDENT_STRING, '', '', str_repeat(PDebug::$GENERIC_BORDER_CHARACTER, $full_width)), PDebug::$GENERIC_LINE);
+
+			$resource_footer_rows[] = $divider_row;
+			array_unshift($resource_header_rows, $divider_row);
 		}
 
 		// resource table: column headers
 		$cells = array();
 		foreach (array_keys($columns) as $field) {
-			$cells[] = str_replace(array('%t', '%v'), array('', str_pad($field, $col_widths[$field])), PDebug::$GENERIC_CELL);
+			$cells[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, '', str_pad($field, $col_widths[$field])), PDebug::$GENERIC_CELL);
 		}
+		$resource_header_rows[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM), array(PDebug::$CURRENT_INDENT_STRING, '', '', implode(PDebug::$GENERIC_CELL_JOINER, $cells)), PDebug::$GENERIC_LINE);
 
-		if (PDebug::$GENERIC_BORDER_CHARACTER) {
-			$resource_header_rows[] = $divider_row;
-		}
-		$resource_header_rows[] = str_replace(array('%t', '%i', '%s'), array('', '', implode(PDebug::$GENERIC_LINE_JOINER, $cells)), PDebug::$GENERIC_LINE);
 		if (PDebug::$GENERIC_BORDER_CHARACTER) {
 			$resource_header_rows[] = $divider_row;
 		}
@@ -128,12 +130,12 @@
 						$len = $col_widths[$field];
 					}
 
-					$value = str_pad($val, $len, ' ', is_numeric($columns[$field][$i]) ? STR_PAD_LEFT : STR_PAD_RIGHT);
-					$cells[] = str_replace(array('%t', '%v'), array('', $value), PDebug::$GENERIC_TITLED_CELL);
+					$value = str_pad($val, $len, ' ', is_numeric($val) ? STR_PAD_LEFT : STR_PAD_RIGHT);
+					$cells[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, $value), PDebug::$GENERIC_CELL);
 				}
 
 				// combine cells to row
-				$resource_table_rows[] = str_replace(array('%t', '%i', '%s'), array('', ($i % 2 ? '' : ' alt'), implode(PDebug::$GENERIC_LINE_JOINER, $cells)), PDebug::$GENERIC_LINE);
+				$resource_table_rows[] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM), array(PDebug::$CURRENT_INDENT_STRING, '', ($i % 2 ? '' : ' alt'), implode(PDebug::$GENERIC_CELL_JOINER, $cells)), PDebug::$GENERIC_LINE);
 			}
 		}
 
