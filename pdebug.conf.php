@@ -70,6 +70,7 @@
 		// Wierdness / troubleshooting
 			'line_ending_regex'					=> "/(\r\n|\r|\n)/",	// modify this if you have issues - it should catch windows, mac or unix text fine though.
 			'enable_debug_function_wrappers'	=> true,				// disable to only call debugger functions directly - PDebug::dump(array($var1, $var2, ...)); etc as opposed to dump(). Only use this if you have conflicting function names in the global namespace, and in that case you should probably just rename the pdebug functions...
+			'flush_on_output'					=> true,				// by default, any output from PDebug will flush the output buffer. You can disable this here if you use some form of output buffering in your projects that conflicts.
 
 
 	//===================================================================================================================
