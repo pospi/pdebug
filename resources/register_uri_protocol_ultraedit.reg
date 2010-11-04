@@ -1,0 +1,20 @@
+Windows Registry Editor Version 5.00
+
+; This is a setup to configure UltraEdit studio... modify to your own needs :)
+
+[HKEY_CLASSES_ROOT\pphpide]
+@="URL:pphpide Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\pphpide\DefaultIcon]
+@=""
+
+[HKEY_CLASSES_ROOT\pphpide\shell]
+
+[HKEY_CLASSES_ROOT\pphpide\shell\open]
+
+[HKEY_CLASSES_ROOT\pphpide\shell\open\command]
+@="C:\\launchurl.exe \"%1\""
+
+[HKEY_CURRENT_USER\Software\URL Protocol Launcher]
+"pphpide"="C:\\Program Files\\UltraEdit\\UEdit32.exe \"%1\""
