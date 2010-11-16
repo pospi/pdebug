@@ -189,9 +189,14 @@
 
 			return $string_lines;
 		}
-
+		
+		// takes a string or array of lines
 		public static function String_getDisplayWidth($string) {
-			$lines = PProtocolHandler::String_getLines($string);
+			if (is_string($string)) {
+				$lines = PProtocolHandler::String_getLines($string);
+			} else {
+				$lines = $string;
+			}
 
 			$escape = PProtocolHandler::isOutputtingHtml();
 
@@ -204,6 +209,30 @@
 			}
 
 			return $maxw;
+		}
+		
+		/**
+		 * takes a multiline string with all different line lengths, and inserts padding around it for plaintext output, like so (dots are spaces):
+		 * "test string								"test string............|
+		 *  	zomg					-->		|........zomg...............|
+		 *  no FREAKING WAY"					|....no FREAKING WAY........|"
+		 */
+		public static function String_padForGenericLine($string, $indent, $leftMargin, $rightMargin, $leftPrepend = '', $rightAppend = '', $doFirstLine = false, $doLastLine = false) {
+			if (PProtocolHandler::isOutputtingHtml() && !PProtocolHandler::$OUTPUT_HTML_AS_PLAIN) {
+				return $string;
+			}
+			
+			$lines = PProtocolHandler::String_getLines($string);
+			$maxw = PProtocolHandler::String_getDisplayWidth($lines);
+			$first = array_shift($lines);
+			
+			$result = ($doFirstLine ? $indent . $leftPrepend . str_repeat(' ', $leftMargin) : '') . str_pad($first, $maxw) . str_repeat(' ', $rightMargin) . $rightAppend;
+			foreach ($lines as $k => $line) {
+				$line = $leftPrepend . str_repeat(' ', $leftMargin) . str_pad($line, $maxw) . str_repeat(' ', $rightMargin) . $rightAppend;
+				$result .= "\n" . str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM), array($indent, '', '', $line), PDebug::$GENERIC_LINE);
+			}
+			
+			return $result;
 		}
 
 	//=====================================================================================================================
