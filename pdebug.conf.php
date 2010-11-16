@@ -129,10 +129,14 @@
 	// load theme files
 	$themePath = dirname(__FILE__) . '/themes/';
 	$toLoad = array(
-		'html' => $themePath . $_PDEBUG_OPTIONS['html_theme'] . '/html.php',
 		'text' => $themePath . $_PDEBUG_OPTIONS['plaintext_theme'] . '/text.php',
 		'json' => $themePath . $_PDEBUG_OPTIONS['json_theme'] . '/json.php'
 	);
+	if ($_PDEBUG_OPTIONS['html_theme'] == 'plaintext') {
+		$toLoad['html'] = $themePath . $_PDEBUG_OPTIONS['plaintext_theme'] . '/text.php';
+	} else {
+		$toLoad['html'] = $themePath . $_PDEBUG_OPTIONS['html_theme'] . '/html.php';
+	}
 
 	foreach ($toLoad as $type => $path) {
 		if (!file_exists($path)) {
