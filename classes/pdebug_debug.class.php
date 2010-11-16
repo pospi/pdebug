@@ -939,7 +939,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				preg_match_all(PProtocolHandler::$LINE_ENDING_REGEX, $var, $line_count, PREG_PATTERN_ORDER);
 				$line_count = sizeof($line_count[0]) + 1;		// total matches of whole pattern
 				
-				if ($short_format) {
+				if ($short_format && $line_count > 1) {
 					$var = $string_length > 20 ? substr($var, 0, 20) . '...' : $var;
 					$var = preg_replace(PProtocolHandler::$LINE_ENDING_REGEX, '', $var);
 				}
