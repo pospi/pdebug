@@ -13,13 +13,42 @@
 	$pdebug_init_start_time = microtime(true);
 	$pdebug_init_start_mem  = memory_get_usage();
 
-	include('pdebug.conf.php');
+	// Load a config file from various places. This allows you to define your debugger configurations
+	// on a per-vhost basis or override them from within specific directories during development.
+	if (file_exists($_SERVER['DOCUMENT_ROOT'] . dirname($_SERVER['PHP_SELF']) . '/pdebug.conf.php')) {	// directory of requested file
+		include($_SERVER['DOCUMENT_ROOT'] . dirname($_SERVER['PHP_SELF']) . '/pdebug.conf.php');
+	} else if (file_exists($_SERVER['DOCUMENT_ROOT'] . '/pdebug.conf.php')) {							// document root
+		include($_SERVER['DOCUMENT_ROOT'] . '/pdebug.conf.php');
+	} else {																							// default config
+		include('pdebug.conf.php');
+	}
 
+	// load theme files
+	$themePath = dirname(__FILE__) . '/themes/';
+	$toLoad = array(
+		'html' => $themePath . $_PDEBUG_OPTIONS['html_theme'] . '/html.php',
+		'text' => $themePath . $_PDEBUG_OPTIONS['plaintext_theme'] . '/text.php',
+		'json' => $themePath . $_PDEBUG_OPTIONS['json_theme'] . '/json.php'
+	);
+
+	foreach ($toLoad as $type => $path) {
+		if (!file_exists($path)) {
+			die("PDebug error: could not locate specified theme file ($path)");
+		}
+		include($path);
+		// each file contains a variable called $t which is the theme array
+		$_PDEBUG_OPTIONS['DEBUGGER_THEMES'][$type] = $t;
+		unset($t);
+	}
+	unset($themePath, $toLoad, $type, $path);
+
+	// class files
 	include('classes/pdebug_shared.class.php');
 	if ($_PDEBUG_OPTIONS['use_debugger']) {
 		include('classes/pdebug_debug.class.php');
 	}
 
+	// show startup stats, if necessary
 	if (isset($_PDEBUG_OPTIONS['show_startup_stats']) && $_PDEBUG_OPTIONS['show_startup_stats']) {
 
 		unset($_PDEBUG_OPTIONS);		// unset this separately so we don't have to make a temporary variable for $show_startup_stats
