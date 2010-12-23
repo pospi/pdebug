@@ -649,15 +649,15 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 *
 		 *  @param		array		ref_chain	array of all previously dumped vars (avoids recursion)
 		 */
-		public static function getDebugFor($var, $short_format = false, &$ref_chain = null) {
+		public static function getDebugFor($var, $short_format = false, &$ref_chain = null, $recurse_depth = 0) {
 			PDebug::sanityCheck();
 
 			$out = '';
 
 			if (is_object($var)) {
-				$out = PDebug::debug_object($var, $short_format, $ref_chain);
+				$out = PDebug::debug_object($var, $short_format, $ref_chain, $recurse_depth);
 			} else if (is_array($var)) {
-				$out = PDebug::debug_array($var, $short_format, $ref_chain);
+				$out = PDebug::debug_array($var, $short_format, $ref_chain, $recurse_depth);
 			} else if (is_resource($var)) {
 				$out = PDebug::debug_resource($var, $short_format, $ref_chain);
 			} else {
@@ -719,7 +719,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 *  @param		object	var		 	the object to debug
 		 *  @param		array		ref_chain	array of all previously dumped vars (avoids recursion)
 		 */
-		private static function debug_object($var, $short_format = false, &$ref_chain = null) {
+		private static function debug_object($var, $short_format = false, &$ref_chain = null, $recurse_depth = 0) {
 
 			if ($ref_chain === null) {
 				$ref_chain = array();
@@ -732,7 +732,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				}
 			}
 			
-			$show_contents = !($short_format && PDebug::$SHALLOW_STACK_TRACE);
+			$show_contents = !($short_format && PDebug::$SHALLOW_STACK_TRACE && $recurse_depth > 0);
+			++$recurse_depth;
 
 			PDebug::increaseIndent();
 
@@ -782,7 +783,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					}
 	
 					$obj_contents[$idx] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, $member_tuple[0], $member_tuple[1]), PDebug::$OBJECT_INDEX)
-										. str_replace(array(PDebug::WC_INDENT, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, PDebug::getDebugFor($member_tuple[2], $short_format, $ref_chain)), PDebug::$OBJECT_MEMBER);
+										. str_replace(array(PDebug::WC_INDENT, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, PDebug::getDebugFor($member_tuple[2], $short_format, $ref_chain, $recurse_depth)), PDebug::$OBJECT_MEMBER);
 				}
 			}
 
@@ -820,15 +821,16 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		 *  @param		array		var			the array to recursively debug
 		 *  @param		array		ref_chain	array of all previously dumped vars (avoids recursion)
 		 */
-		private static function debug_array($var, $short_format = false, &$ref_chain = null) {
+		private static function debug_array($var, $short_format = false, &$ref_chain = null, $recurse_depth = 0) {
 
 			// initialise reference chain if not set (initial call)
 			// this prevents recursive object / array loops from making the debugger explode
 			if ($ref_chain === null) {
 				$ref_chain = array();
 			}
-			
-			$show_contents = !($short_format && PDebug::$SHALLOW_STACK_TRACE);
+
+			$show_contents = !($short_format && PDebug::$SHALLOW_STACK_TRACE && $recurse_depth > 0);
+			++$recurse_depth;
 
 			PDebug::increaseIndent();
 
@@ -892,7 +894,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					}
 	
 					$arr_contents[$idx] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY_PADDING, PDebug::WC_KEY), array(PDebug::$CURRENT_INDENT_STRING, $this_line_padding, $array_pair_info[0]), $array_pair_info[2])
-										. str_replace(array(PDebug::WC_INDENT, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, PDebug::getDebugFor($array_pair_info[1], false, $ref_chain)), PDebug::$ARRAY_VALUE);
+										. str_replace(array(PDebug::WC_INDENT, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, PDebug::getDebugFor($array_pair_info[1], $short_format, $ref_chain, $recurse_depth)), PDebug::$ARRAY_VALUE);
 				}
 			}
 
