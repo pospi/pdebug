@@ -47,10 +47,10 @@
 						$len = 4;							// length of "null"
 					} else {
 						$line = strval($line);
-						if (strpos($line, TAB) !== false) {
+						if (strpos($line, "\t") !== false) {
 							$out = '';
 							for ($i = 0; $i < strlen($line); $i++) {
-								if ($line[$i] == TAB) {
+								if ($line[$i] == "\t") {
 									$out .= str_repeat(' ', ($tab_spacing - (strlen($out) % $tab_spacing)));
 								} else {
 									$out .= $line[$i];
