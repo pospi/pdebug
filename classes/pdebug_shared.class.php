@@ -320,7 +320,7 @@
 				$h .= "MIME-Version: 1.0\r\n"
 					. "Content-Type: text/html; charset=ISO-8859-1\r\n";
 				
-				$text = '<html><body>' . $text . PDebug::trace() . '</body></html>';
+				$text = '<html><body>' . $text . '</body></html>';
 			}
 
 			return @mail(PProtocolHandler::$RECIPIENT_EMAIL, $subject, $text, $h, (isset(PProtocolHandler::$ENVELOPE_SENDER) ? '-f' . PProtocolHandler::$ENVELOPE_SENDER : ''));

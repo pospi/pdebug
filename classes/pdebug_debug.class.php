@@ -1126,7 +1126,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 				$subject = str_replace(
 					array(Pdebug::WC_ERROR_COUNT, PDebug::WC_WARNING_COUNT, PDebug::WC_SERVERNAME),
-					array(PDebug::$ERROR_COUNT, PDebug::$WARNING_COUNT, (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : $_SERVER['SERVER_NAME'])),
+					array(PDebug::$ERROR_COUNT, PDebug::$WARNING_COUNT, (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : $_SERVER['SERVER_NAME']) . $_SERVER['PHP_SELF']),
 					$subject
 				);
 				PProtocolHandler::sendMail($subject, PDebug::$CAUGHT_OUTPUT);
