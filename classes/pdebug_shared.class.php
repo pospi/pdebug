@@ -39,6 +39,16 @@
 		static $LINE_ENDING_REGEX = "/(\r\n|\r|\n)/";
 
 		static $OUTPUT_HTML_AS_PLAIN = false;	// true if outputting plaintext data in HTML mode (config hack for end user simplicity)
+		
+		static $ECHO = true;					// output to the screen
+
+		static $RECIPIENT_EMAIL = null;			// output to emails when this is not null
+		static $SENDER_EMAIL = 'debugger@example.com';
+		static $ENVELOPE_SENDER = null;
+		static $EMAIL_NONCRITICAL = false;
+		static $EMAIL_SUBJECT_ERR = 'pDebug [%e errors, %w warnings] - %h';		// %h is hostname, %e = error count, %w = warning count
+		static $EMAIL_SUBJECT_WARN = 'pDebug [%w warnings] - %h';
+		static $EMAIL_SUBJECT_NORM = 'pDebug - %h';
 
 	//=====================================================================================================================
 	// String Functions
@@ -294,6 +304,29 @@
 		}
 
 	//=====================================================================================================================
+	// Mailing Functions
+	//=====================================================================================================================
+	
+		public static function sendMail($subject, $text) {
+			if (!PProtocolHandler::$RECIPIENT_EMAIL) {
+				return false;
+			}
+			
+			// add mail headers & formatting depending on the type of debug we've been collecting
+			$h = 'From: ' . PProtocolHandler::$SENDER_EMAIL . "\r\n"
+			   . 'Reply-To: ' . PProtocolHandler::$SENDER_EMAIL . "\r\n";
+
+			if (PProtocolHandler::isOutputtingHtml()) {
+				$h .= "MIME-Version: 1.0\r\n"
+					. "Content-Type: text/html; charset=ISO-8859-1\r\n";
+				
+				$text = '<html><body>' . $text . PDebug::trace() . '</body></html>';
+			}
+
+			return @mail(PProtocolHandler::$RECIPIENT_EMAIL, $subject, $text, $h, (isset(PProtocolHandler::$ENVELOPE_SENDER) ? '-f' . PProtocolHandler::$ENVELOPE_SENDER : ''));
+		}
+	
+	//=====================================================================================================================
 	//=====================================================================================================================
 
 		public static function outputAs($mode) {
@@ -372,6 +405,31 @@
 	}
 	if (isset($_PDEBUG_OPTIONS['line_ending_regex'])) {
 		PProtocolHandler::$LINE_ENDING_REGEX = $_PDEBUG_OPTIONS['line_ending_regex'];
+	}
+
+	if (isset($_PDEBUG_OPTIONS['print_output'])) {
+		PProtocolHandler::$ECHO = $_PDEBUG_OPTIONS['print_output'];
+	}
+	if (isset($_PDEBUG_OPTIONS['email_output']) && $_PDEBUG_OPTIONS['email_output'] && isset($_PDEBUG_OPTIONS['email_errors_to'])) {
+		PProtocolHandler::$RECIPIENT_EMAIL = $_PDEBUG_OPTIONS['email_errors_to'];
+	}
+	if (isset($_PDEBUG_OPTIONS['email_from_address'])) {
+		PProtocolHandler::$SENDER_EMAIL = $_PDEBUG_OPTIONS['email_from_address'];
+	}
+	if (!empty($_PDEBUG_OPTIONS['email_envelope'])) {
+		PProtocolHandler::$ENVELOPE_SENDER = $_PDEBUG_OPTIONS['email_envelope'];
+	}
+	if (isset($_PDEBUG_OPTIONS['email_warnings'])) {
+		PProtocolHandler::$EMAIL_NONCRITICAL = $_PDEBUG_OPTIONS['email_warnings'];
+	}
+	if (isset($_PDEBUG_OPTIONS['email_subject_errors'])) {
+		PProtocolHandler::$EMAIL_SUBJECT_ERR = $_PDEBUG_OPTIONS['email_subject_errors'];
+	}
+	if (isset($_PDEBUG_OPTIONS['email_subject_warnings'])) {
+		PProtocolHandler::$EMAIL_SUBJECT_WARN = $_PDEBUG_OPTIONS['email_subject_warnings'];
+	}
+	if (isset($_PDEBUG_OPTIONS['email_subject_output'])) {
+		PProtocolHandler::$EMAIL_SUBJECT_NORM = $_PDEBUG_OPTIONS['email_subject_output'];
 	}
 
 ?>

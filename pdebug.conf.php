@@ -49,6 +49,23 @@
 			'plaintext_theme'					=> 'pdebug',
 			'json_theme'						=> 'pdebug',
 
+			// output flags. These control how the debugger sends its output.
+			'print_output'						=> true,			// outputs within the current response
+			'email_output'						=> false,			// emails all output at the end of the script
+
+			// email error reporting options. 
+			// These are sent using the PHP's mail() function when the script terminates.
+			// Feel free to edit PProtocolHandler::sendMail() to use another delivery system.
+			'email_errors_to'					=> '',				// this is a comma-separated list of email addresses to send to (as in RFC 2822)
+			'email_from_address'				=> 'debugger@example.com',
+			'email_envelope'					=> '',				// this will set your email envelope sender for servers which require a particular value for this. When blank, none is set.
+			'email_warnings'					=> false,			// toggles sending of non-critical errors via email
+
+			// Set email subjects. %h = hostname, %e = error count, %w = warning count
+			'email_subject_output'				=> 'pDebug - %h',							// no errors or warnings present, manual debug output only
+			'email_subject_warnings'			=> 'pDebug [%w warnings] - %h',				// warnings (but no errors) present
+			'email_subject_errors'				=> 'pDebug [%e errors, %w warnings] - %h',	// errors present
+
 			// only use this if you are having trouble with some wierd server configuration or AJAX api that doesn't autodetect through the built-in checks.
 			//										null = auto, or any of 'html', 'text' or 'json'
 			'force_output_mode' 				=> null,

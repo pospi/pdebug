@@ -94,7 +94,7 @@
 
 		// we defer loading statistics to output at script termination
 		if (PDebug::$STARTUP_STATS_FORMAT) {
-			register_shutdown_function(array(PDebug, '__printInitStats'));
+			register_shutdown_function(array('PDebug', '__printInitStats'));
 		}
 
 	} else {
