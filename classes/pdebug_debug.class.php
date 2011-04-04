@@ -207,6 +207,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		static $ERROR_COUNT = 0;
 		static $WARNING_COUNT = 0;
 		static $BENCH_COUNT = 0;
+		static $TOTAL_DEBUG_TIME = 0.0;
 
 		static $HAS_OUTPUT_HEADER 	= false;	// include common CSS / JS header for debugging HTML output on first call
 
@@ -617,6 +618,9 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				PDebug::$PDEBUG_PREV_BENCH	-= $dt;
 				PDebug::$PDEBUG_PREV_MEM	-= $dm;
 			}
+
+			// also increment the debugger's execution time
+			PDebug::$TOTAL_DEBUG_TIME += $dt;
 		}
 
 		private static function increaseIndent($add = null) {
@@ -1101,13 +1105,25 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			PDebug::doOutput($message, PDebug::__errorIsNonCritical($errorCode) && !PProtocolHandler::$EMAIL_NONCRITICAL);
 		}
 
+		// takes the stored initialisation stats string and adds the debugger execution times into it before returning
+		private static function __getInitStats() {
+			if (PDebug::$INITIALISATION_LOG_STRING) {
+				$times = PDebug::__shadedTime(PDebug::$TOTAL_DEBUG_TIME);
+				list($header_extra, $footer_extra) = PDebug::verifyHeaderIncludes(PDebug::$HEADER_BLOCK, PDebug::$FOOTER_BLOCK);
+
+				PDebug::$INITIALISATION_LOG_STRING = str_replace(array(PDebug::WC_BENCH_TIME, PDebug::WC_BENCH_TIME_C), array($times[0], $times[1]), PDebug::$INITIALISATION_LOG_STRING);
+
+				return $header_extra . PDebug::$INITIALISATION_LOG_STRING . $footer_extra;
+			}
+			return '';
+		}
 
 		// method to output pdebug startup statistical string, stored upon loading the library
 		public static function __printInitStats() {
 			PDebug::goInternal();
-			if (PDebug::$INITIALISATION_LOG_STRING) {
-				list($header_extra, $footer_extra) = PDebug::verifyHeaderIncludes(PDebug::$HEADER_BLOCK, PDebug::$FOOTER_BLOCK);
-				PDebug::doOutput($header_extra . PDebug::$INITIALISATION_LOG_STRING . $footer_extra);
+			$statsStr = PDebug::__getInitStats();
+			if ($statsStr) {
+				PDebug::doOutput($statsStr);
 			}
 			PDebug::goExternal();
 		}
@@ -1133,7 +1149,10 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					array(PDebug::$ERROR_COUNT, PDebug::$WARNING_COUNT, (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : $_SERVER['SERVER_NAME']) . $_SERVER['PHP_SELF']),
 					$subject
 				);
-				PProtocolHandler::sendMail($subject, PDebug::$CAUGHT_OUTPUT);
+
+				$statusLine = PDebug::__getInitStats();
+
+				PProtocolHandler::sendMail($subject, $statusLine . PDebug::$CAUGHT_OUTPUT);
 			}
 			PDebug::goExternal();
 		}

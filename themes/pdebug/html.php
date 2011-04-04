@@ -341,9 +341,9 @@ EOT
 	// This one is like a benchmark, except that it shows stats for pdebug startup overhead
 	// Feel entirely free to disable this with the config var up top if it shits you!
 	// :NOTE:
-	//  - %t and %m are not used for this, only the overhead is shown.
+	//  - %dt and %dm are the startup overhead, whilst %t is the total debugger execution time. The total debugger mem usage doesn't make sense.
 	//  - %p shows $_SERVER['PHP_SELF'], or server path of the executing script if unavailable
-	'STARTUP_STATS_FORMAT'		=>  '<li><span class="resource"><span><nobr style="cursor: default;">:pdebug:</nobr></span></span> <span class="info">loaded</span> for <span style="color: #0086CE;">%p</span>: (in <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB)</li>',
+	'STARTUP_STATS_FORMAT'		=>  '<li><span class="resource"><span><nobr style="cursor: default;">:pdebug:</nobr></span></span> <span class="info">loaded</span> for <span style="color: #0086CE;">%p</span>: (started in <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB, total overhead <span style="color: %ct">%t</span>s)</li>',
 	//	- %p is additionally not used in this one...
 	'INTERNAL_CALL_LOG_FORMAT'	=>  '<li onclick="PDebug.c(this);"><span class="resource"><span><nobr>:pdebug:</nobr></span></span><span class="info %i"> %i </span>: (executed in <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB)</li>',
 

@@ -80,7 +80,7 @@ $t = array(
 	// :NOTE:
 	//  - %t and %m are not used for this, only the overhead is shown.
 	//  - %p shows $_SERVER['PHP_SELF'], or server path of the executing script if unavailable
-	'STARTUP_STATS_FORMAT'		=>  "[[pdebug loaded]] for %p (in %dt sec / %dm KB)\n",
+	'STARTUP_STATS_FORMAT'		=>  "[[pdebug loaded]] for %p (in %dt sec / %dm KB, overhead %t sec)\n",
 	//	- %p is additionally not used in this one...
 	'INTERNAL_CALL_LOG_FORMAT'	=>  "[pdebug invoked: %i] : (executed in %dt sec / %dm KB)\n",
 
