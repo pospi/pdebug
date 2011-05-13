@@ -39,7 +39,7 @@ if (!function_exists('memory_get_usage')) { function memory_get_usage() {
 	} else if (file_exists($_SERVER['DOCUMENT_ROOT'] . '/pdebug.conf.php')) {							// document root
 		include($_SERVER['DOCUMENT_ROOT'] . '/pdebug.conf.php');
 	} else {																							// default config
-		include('pdebug.conf.php');
+		require(dirname(__FILE__) . '/pdebug.conf.php');
 	}
 
 	// load theme files
