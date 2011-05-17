@@ -1078,7 +1078,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		}
 		
 		public static function __checkExitStatus() {
-			if (PDebug::$USE_ERROR_HANDLER) {
+			if (PDebug::$USE_ERROR_HANDLER && function_exists('error_get_last')) {
 				$error = error_get_last();
 				if (in_array($error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_STRICT))) {
 					PDebug::__error($error['type'], $error['message'], $error['file'], $error['line'], array());
@@ -1185,7 +1185,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 //											IDE options reading for class variables
 //=====================================================================================================================================
 
-	// set error handler, if desired :NOTE: very experimental
+	// set error handler, if desired
 	if ($_PDEBUG_OPTIONS['use_error_handler']) {
 		PDebug::$USE_ERROR_HANDLER = true;
 		set_error_handler(array('PDebug', '__error'));
