@@ -363,15 +363,11 @@
 	if ($_PDEBUG_OPTIONS['force_output_mode'] !== null) {
 		PProtocolHandler::outputAs($_PDEBUG_OPTIONS['force_output_mode']);
 	} else if (
-		// :TODO: detect other things besides prototype
+		// :TODO: detect other things for weird AJAX libraries
 		(isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest')
 	  ) {
 		PProtocolHandler::outputAs(PProtocolHandler::MODE_JSON);
-	} else if (
-			!isset($_SERVER['SERVER_SOFTWARE'])
-		||	empty($_SERVER['HTTP_USER_AGENT'])
-		||	empty($_SERVER['REQUEST_URI'])
-	  ) {
+	} else if (isset($_SERVER['argv'])) {
 		PProtocolHandler::outputAs(PProtocolHandler::MODE_TEXT);
 	}
 
