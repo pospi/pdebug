@@ -13,23 +13,9 @@
 	// a memory usage interrogation function for this to work at all.
 	$pdebug_init_start_time = microtime(true);
 
-if (!function_exists('memory_get_usage')) { function memory_get_usage() {
-	// Win XP Pro SP2, Win 2003 Server
-	// Doesn't work for 2000 - If you need it to work for 2000 look at http://php.net/manual/en/function.memory-get-usage.php#54642
-	if (substr(PHP_OS, 0, 3) == 'WIN') {
-		$output = array();
-		exec('tasklist /FI "PID eq ' . getmypid() . '" /FO LIST', $output);
-
-		return preg_replace('/[\D]/', '', $output[5]) * 1024;
-	} else {
-	// UNIX / OSX
-		$pid = getmypid();
-		exec("ps -eo%mem,rss,pid | grep $pid", $output);
-		$output = explode("  ", $output[0]);
-
-		return $output[1] * 1024;
+	if (!function_exists('memory_get_usage')) {
+		require(dirname(__FILE__) . '/classes/pdebug_memorycompat.inc.php');
 	}
-}}
 	$pdebug_init_start_mem  = memory_get_usage();
 
 	// Load a config file from various places. This allows you to define your debugger configurations
