@@ -39,13 +39,12 @@
 		static $LINE_ENDING_REGEX = "/(\r\n|\r|\n)/";
 
 		static $OUTPUT_HTML_AS_PLAIN = false;	// true if outputting plaintext data in HTML mode (config hack for end user simplicity)
-		
+
 		static $ECHO = true;					// output to the screen
 
 		static $RECIPIENT_EMAIL = null;			// output to emails when this is not null
 		static $SENDER_EMAIL = 'debugger@example.com';
 		static $ENVELOPE_SENDER = null;
-		static $EMAIL_NONCRITICAL = false;
 		static $EMAIL_SUBJECT_ERR = 'pDebug [%e errors, %w warnings] - %h';		// %h is hostname, %e = error count, %w = warning count
 		static $EMAIL_SUBJECT_WARN = 'pDebug [%w warnings] - %h';
 		static $EMAIL_SUBJECT_NORM = 'pDebug - %h';
@@ -199,7 +198,7 @@
 
 			return $string_lines;
 		}
-		
+
 		// takes a string or array of lines
 		public static function String_getDisplayWidth($string) {
 			if (is_string($string)) {
@@ -220,7 +219,7 @@
 
 			return $maxw;
 		}
-		
+
 		/**
 		 * takes a multiline string with all different line lengths, and inserts padding around it for plaintext output, like so (dots are spaces):
 		 * "test string								"test string............|
@@ -231,17 +230,17 @@
 			if (PProtocolHandler::isOutputtingHtml() && !PProtocolHandler::$OUTPUT_HTML_AS_PLAIN) {
 				return $string;
 			}
-			
+
 			$lines = PProtocolHandler::String_getLines($string);
 			$maxw = PProtocolHandler::String_getDisplayWidth($lines);
 			$first = array_shift($lines);
-			
+
 			$result = ($doFirstLine ? $indent . $leftPrepend . str_repeat(' ', $leftMargin) : '') . str_pad($first, $maxw) . str_repeat(' ', $rightMargin) . $rightAppend;
 			foreach ($lines as $k => $line) {
 				$line = $leftPrepend . str_repeat(' ', $leftMargin) . str_pad($line, $maxw) . str_repeat(' ', $rightMargin) . $rightAppend;
 				$result .= "\n" . str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM), array($indent, '', '', $line), PDebug::$GENERIC_LINE);
 			}
-			
+
 			return $result;
 		}
 
@@ -306,12 +305,12 @@
 	//=====================================================================================================================
 	// Mailing Functions
 	//=====================================================================================================================
-	
+
 		public static function sendMail($subject, $text) {
 			if (!PProtocolHandler::$RECIPIENT_EMAIL) {
 				return false;
 			}
-			
+
 			// add mail headers & formatting depending on the type of debug we've been collecting
 			$h = 'From: ' . PProtocolHandler::$SENDER_EMAIL . "\r\n"
 			   . 'Reply-To: ' . PProtocolHandler::$SENDER_EMAIL . "\r\n";
@@ -319,13 +318,13 @@
 			if (PProtocolHandler::isOutputtingHtml()) {
 				$h .= "MIME-Version: 1.0\r\n"
 					. "Content-Type: text/html; charset=ISO-8859-1\r\n";
-				
+
 				$text = '<html><body>' . $text . '</body></html>';
 			}
 
 			return @mail(PProtocolHandler::$RECIPIENT_EMAIL, $subject, $text, $h, (isset(PProtocolHandler::$ENVELOPE_SENDER) ? '-f' . PProtocolHandler::$ENVELOPE_SENDER : ''));
 		}
-	
+
 	//=====================================================================================================================
 	//=====================================================================================================================
 
@@ -414,9 +413,6 @@
 	}
 	if (!empty($_PDEBUG_OPTIONS['email_envelope'])) {
 		PProtocolHandler::$ENVELOPE_SENDER = $_PDEBUG_OPTIONS['email_envelope'];
-	}
-	if (isset($_PDEBUG_OPTIONS['email_warnings'])) {
-		PProtocolHandler::$EMAIL_NONCRITICAL = $_PDEBUG_OPTIONS['email_warnings'];
 	}
 	if (isset($_PDEBUG_OPTIONS['email_subject_errors'])) {
 		PProtocolHandler::$EMAIL_SUBJECT_ERR = $_PDEBUG_OPTIONS['email_subject_errors'];

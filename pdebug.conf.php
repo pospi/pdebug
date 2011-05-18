@@ -44,6 +44,7 @@
 			'translate_string_paths_in_html'	=> true,							// strings like "require('C:\web\myproject\file.inc.php');" gets paths replaced with links / tooltips automatically
 
 		// Debugger options
+
 			// choose a theme! (see below, or make your own)
 			'html_theme'						=> 'pdebug',		// or set 'plaintext' to use plaintext style in a <pre> tag
 			'plaintext_theme'					=> 'pdebug',
@@ -52,14 +53,21 @@
 			// output flags. These control how the debugger sends its output.
 			'print_output'						=> true,			// outputs within the current response
 			'email_output'						=> false,			// emails all output at the end of the script
+			'error_output_callback'				=> null,			// if print_output is FALSE, this can be used to set a function for outputting 'safe' error messages to the end-user. It is passed the error code and message.
 
-			// email error reporting options. 
+			// email error reporting options.
 			// These are sent using the PHP's mail() function when the script terminates.
 			// Feel free to edit PProtocolHandler::sendMail() to use another delivery system.
 			'email_errors_to'					=> '',				// this is a comma-separated list of email addresses to send to (as in RFC 2822)
 			'email_from_address'				=> 'debugger@example.com',
 			'email_envelope'					=> '',				// this will set your email envelope sender for servers which require a particular value for this. When blank, none is set.
-			'email_warnings'					=> false,			// toggles sending of non-critical errors via email
+
+			// controls which error levels are interpreted by the debugger as non-critical
+			'warning_types'						=> E_USER_WARNING | E_USER_NOTICE | E_WARNING | E_NOTICE | E_STRICT | E_CORE_WARNING | E_COMPILE_WARNING | 8192 | 16384,
+			// sets which error levels should be emailed when email_output is set
+			'email_types'						=> E_ALL | E_STRICT,
+			// sets which error levels should be completely ignored by the debugger.
+			'ignore_types'						=> E_NOTICE | E_STRICT,
 
 			// Set email subjects. %h = hostname, %e = error count, %w = warning count
 			'email_subject_output'				=> 'pDebug - %h',							// no errors or warnings present, manual debug output only
@@ -73,7 +81,6 @@
 			'debug_start_collapsed'				=> false,			// start debugger variable nodes collapsed in HTML view (useful to hide long datasets)
 			'adjust_benchmarker_for_debugger'	=> true,			// if true, subtract the time taken to execute debug() calls from benchmarking statistics
 			'show_internal_statistics'			=> true,			// if true, show time & memory usage for each debugger function call
-			'strict_error_handler'				=> false,			// set to true if you wish to see E_NOTICE and E_STRICT warnings
 
 			// time / memory shading configuration vars
 			'benchmarker_time_value_high'		=> 1,				// executions taking longer than this many seconds are considered to be "slow"

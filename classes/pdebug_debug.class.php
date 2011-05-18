@@ -169,7 +169,10 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		static $USE_STACK_TRACE = true;
 		static $SHALLOW_STACK_TRACE = true;
 		static $USE_ERROR_HANDLER = false;
-		static $STRICT_ERROR_HANDLER = false;
+		static $IGNORE_ERRLEVELS = 2050; // E_STRICT | E_NOTICE
+		static $WARNING_ERRLEVELS = 3754; // E_WARNING | E_NOTICE | E_STRICT | E_CORE_WARNING | E_COMPILE_WARNING | E_USER_WARNING | E_USER_NOTICE;
+		static $EMAIL_ERRLEVELS = 32759; // E_ALL ^ (E_NOTICE | E_STRICT)
+		static $ERROR_CALLBACK = null;
 
 		static $ADJUST_BENCHMARKER_FOR_DEBUGGER = true;
 
@@ -178,7 +181,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		static $IGNORE_FUNCTIONS = array();		// internal functions to exclude from a stack trace (not including class functions)
 
 		static $START_COLLAPSED = false;
-		
+
 		static $FLUSH_ON_OUTPUT = true;
 
 		static $BENCHMARKER_TIME_VALUE_HIGH = 1;
@@ -211,7 +214,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		static $HAS_OUTPUT_HEADER 	= false;	// include common CSS / JS header for debugging HTML output on first call
 
-		static $CAUGHT_OUTPUT = "";				// when error emailing is used, all output is cached here to be sent when the script terminates		
+		static $CAUGHT_OUTPUT = "";				// when error emailing is used, all output is cached here to be sent when the script terminates
 
 		//============================================================================================
 
@@ -743,7 +746,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					return str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_VAR, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, 'unknown', '* RECURSION *', ''), PDebug::$VARIABLE_OUTPUT_FORMAT);
 				}
 			}
-			
+
 			$show_contents = !($short_format && PDebug::$SHALLOW_STACK_TRACE && $recurse_depth > 0);
 			++$recurse_depth;
 
@@ -762,19 +765,19 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			$obj_contents = array();
 			if ($show_contents) {
 				foreach ($avar as $key => $val) {
-	
+
 					$key_type = 'public';
 					if ($key{0} == "\0") {					// private or protected var
 						$key_parts = explode("\0", $key);
 						$key = $key_parts[2];
 						$key_type = ($key_parts[1] == '*') ? 'protected' : 'private';
 					}
-					
+
 					// Ignore PDebug internal object ID if found - @see PDebug::getObjectUID()
 					if ($key == '__pdebugID__') {
 						continue;
 					}
-	
+
 					$key_display_length = strlen($key);
 					$key_type_display_length = strlen($key_type);
 					if ($val_pad_length < $key_display_length) {
@@ -783,17 +786,17 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					if ($type_pad_length < $key_type_display_length) {
 						$type_pad_length = $key_type_display_length;
 					}
-	
+
 					$obj_contents[] = array($key, $key_type, $val);
 				}
-	
+
 				foreach ($obj_contents as $idx => $member_tuple) {
-	
+
 					if (PDebug::$PADDING_CHARACTER) {
 						$member_tuple[0] = $member_tuple[0] . str_repeat(PDebug::$PADDING_CHARACTER, ($val_pad_length - strlen($member_tuple[0])));
 						$member_tuple[1] = str_repeat(PDebug::$PADDING_CHARACTER, ($type_pad_length - strlen($member_tuple[1]))) . $member_tuple[1];
 					}
-	
+
 					$obj_contents[$idx] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY, PDebug::WC_INFO), array(PDebug::$CURRENT_INDENT_STRING, $member_tuple[0], $member_tuple[1]), PDebug::$OBJECT_INDEX)
 										. str_replace(array(PDebug::WC_INDENT, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, PDebug::getDebugFor($member_tuple[2], $short_format, $ref_chain, $recurse_depth)), PDebug::$OBJECT_MEMBER);
 				}
@@ -814,13 +817,13 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 								),
 							   PDebug::$OBJECT_FORMAT);
 		}
-		
+
 		/**
 		 * Returns a unique identifier for an object instance.
 		 * This is used in HTML output so that multiple dumps of the same object
 		 * do not require any extra output to be sent - instead, javascript is used to load their contents for debugging
 		 */
-		private static function getObjectUID($object) {		
+		private static function getObjectUID($object) {
 			if (!isset($object->__pdebugID__)) {
 				$object->__pdebugID__ = uniqid("pd");
 			}
@@ -864,13 +867,13 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			$arr_contents = array();
 			$contains_string_keys = false;
 			$contains_numeric_keys = false;
-			
+
 			if ($show_contents) {
 				foreach ($var as $k => $v) {
-	
+
 					$line_length = strlen($k);
 					$key_is_string = is_string($k);
-	
+
 					if ($key_is_string) {
 						$contains_string_keys = true;
 						if ($max_string_length < $line_length) {
@@ -882,7 +885,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 							$max_numeric_length = $line_length;
 						}
 					}
-	
+
 					$arr_contents[] = array($k, $v, ($key_is_string ? PDebug::$ARRAY_KEY_STRING : PDebug::$ARRAY_KEY_NUMERIC));
 				}
 			}
@@ -904,7 +907,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 						}
 						$this_line_padding = str_repeat(($numeric_array ? ' ' : PDebug::$PADDING_CHARACTER), max(0, $this_pad_length - strlen($array_pair_info[0])));
 					}
-	
+
 					$arr_contents[$idx] = str_replace(array(PDebug::WC_INDENT, PDebug::WC_KEY_PADDING, PDebug::WC_KEY), array(PDebug::$CURRENT_INDENT_STRING, $this_line_padding, $array_pair_info[0]), $array_pair_info[2])
 										. str_replace(array(PDebug::WC_INDENT, PDebug::WC_VAR), array(PDebug::$CURRENT_INDENT_STRING, PDebug::getDebugFor($array_pair_info[1], $short_format, $ref_chain, $recurse_depth)), PDebug::$ARRAY_VALUE);
 				}
@@ -952,7 +955,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				// get line count
 				preg_match_all(PProtocolHandler::$LINE_ENDING_REGEX, $var, $line_count, PREG_PATTERN_ORDER);
 				$line_count = sizeof($line_count[0]) + 1;		// total matches of whole pattern
-				
+
 				if ($short_format && $line_count > 1) {
 					$var = $string_length > 20 ? substr($var, 0, 20) . '...' : $var;
 					$var = preg_replace(PProtocolHandler::$LINE_ENDING_REGEX, '', $var);
@@ -1019,7 +1022,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				list($type, $error_message, $file_name, $line_number, $data) = PDebug::__exception($arg_list[0]);
 			}
 
-			if (!PDebug::$STRICT_ERROR_HANDLER && ($type == E_NOTICE || $type == E_STRICT)) {
+			if ($type & PDebug::$IGNORE_ERRLEVELS) {
 				return;
 			}
 
@@ -1059,24 +1062,12 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 			list($header_extra, $footer_extra) = PDebug::verifyHeaderIncludes(PDebug::$HEADER_BLOCK, PDebug::$FOOTER_BLOCK);
 
-			// what to do
-			switch ($type) {
-				case E_NOTICE:
-				case E_USER_NOTICE:
-				case E_STRICT:
-				case E_WARNING:
-				case E_USER_WARNING:
-					PDebug::goExternal($err_msg, $err);
-					PDebug::__errorOutput($header_extra . $err_msg . $trace . $footer_extra, $type);
-					return true;
-				default:
-					PDebug::goExternal($err_msg, $err);
-					PDebug::__errorOutput($header_extra . $err_msg . $trace . $footer_extra, $type);
-					return false;
-			}
+			PDebug::goExternal($err_msg, $err);
+			PDebug::__errorOutput($header_extra . $err_msg . $trace . $footer_extra, $type);
 
+			return PDebug::__errorIsNonCritical($type);
 		}
-		
+
 		public static function __checkExitStatus() {
 			if (PDebug::$USE_ERROR_HANDLER && function_exists('error_get_last')) {
 				$error = error_get_last();
@@ -1092,17 +1083,18 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		}
 
 		private static function __errorIsNonCritical($errorCode) {
-			return $errorCode == E_WARNING ||
-				$errorCode == E_NOTICE ||
-				$errorCode == E_STRICT ||
-				$errorCode == E_CORE_WARNING ||
-				$errorCode == E_COMPILE_WARNING ||
-				$errorCode == E_USER_WARNING ||
-				$errorCode == E_USER_NOTICE;
+			return ($errorCode & PDebug::$WARNING_ERRLEVELS) > 0;
+		}
+
+		private static function __shouldEmailError($errorCode) {
+			return ($errorCode & PDebug::$EMAIL_ERRLEVELS) > 0;
 		}
 
 		private static function __errorOutput($message, $errorCode) {
-			PDebug::doOutput($message, PDebug::__errorIsNonCritical($errorCode) && !PProtocolHandler::$EMAIL_NONCRITICAL);
+			PDebug::doOutput($message, !PDebug::__shouldEmailError($errorCode));
+			if (!PProtocolHandler::$ECHO && isset(PDebug::$ERROR_CALLBACK)) {
+				return call_user_func_array(PDebug::$ERROR_CALLBACK, array($errorCode, $message));
+			}
 		}
 
 		// takes the stored initialisation stats string and adds the debugger execution times into it before returning
@@ -1127,7 +1119,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			}
 			PDebug::goExternal();
 		}
-		
+
 		// method to email all output generated by the debugger
 		public static function __emailAllOutput() {
 			if (strlen(PDebug::$CAUGHT_OUTPUT) == 0) {
@@ -1173,7 +1165,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				PDebug::$CAUGHT_OUTPUT .= $string;
 			}
 		}
-		
+
 		public static function flush() {
 			if (PDebug::$FLUSH_ON_OUTPUT) {
 				flush();
@@ -1293,8 +1285,14 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 	}
 	unset($html_theme);
 
-	if (isset($_PDEBUG_OPTIONS['strict_error_handler'])) {
-		PDebug::$STRICT_ERROR_HANDLER = (bool)$_PDEBUG_OPTIONS['strict_error_handler'];
+	if (isset($_PDEBUG_OPTIONS['ignore_types'])) {
+		PDebug::$IGNORE_ERRLEVELS = intval($_PDEBUG_OPTIONS['ignore_types']);
+	}
+	if (isset($_PDEBUG_OPTIONS['warning_types'])) {
+		PDebug::$WARNING_ERRLEVELS = intval($_PDEBUG_OPTIONS['warning_types']);
+	}
+	if (isset($_PDEBUG_OPTIONS['email_types'])) {
+		PDebug::$EMAIL_ERRLEVELS = intval($_PDEBUG_OPTIONS['email_types']);
 	}
 	if (isset($_PDEBUG_OPTIONS['auto_stack_trace'])) {
 		PDebug::$USE_STACK_TRACE = (bool)$_PDEBUG_OPTIONS['auto_stack_trace'];
@@ -1308,9 +1306,12 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 	if (isset($_PDEBUG_OPTIONS['show_internal_statistics'])) {
 		PDebug::$SHOW_INTERNAL_STATISTICS = (bool)$_PDEBUG_OPTIONS['show_internal_statistics'];
 	}
-	
+
 	if (isset($_PDEBUG_OPTIONS['flush_on_output'])) {
 		PDebug::$FLUSH_ON_OUTPUT = (bool)$_PDEBUG_OPTIONS['flush_on_output'];
+	}
+	if (isset($_PDEBUG_OPTIONS['error_output_callback'])) {
+		PDebug::$ERROR_CALLBACK = $_PDEBUG_OPTIONS['error_output_callback'];
 	}
 
 	if (isset($_PDEBUG_OPTIONS['benchmarker_time_value_high'])) {
