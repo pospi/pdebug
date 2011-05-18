@@ -366,7 +366,7 @@
 		(isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest')
 	  ) {
 		PProtocolHandler::outputAs(PProtocolHandler::MODE_JSON);
-	} else if (isset($_SERVER['argv'])) {
+	} else if (PHP_SAPI == 'cli' || (substr(PHP_SAPI, 0, 3) == 'cgi' && empty($_SERVER['REQUEST_URI']))) {
 		PProtocolHandler::outputAs(PProtocolHandler::MODE_TEXT);
 	}
 
