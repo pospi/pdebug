@@ -1040,7 +1040,9 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				E_USER_ERROR		=> 'USER ERROR',
 				E_USER_WARNING		=> 'USER WARNING',
 				E_USER_NOTICE		=> 'USER NOTICE',
-				E_RECOVERABLE_ERROR => 'RECOVERABLE ERROR',
+				4096				=> 'RECOVERABLE ERROR',
+				8192				=> 'DEPRECATED',
+				16384				=> 'USER DEPRECATED',
 			);
 
 			// create error message
