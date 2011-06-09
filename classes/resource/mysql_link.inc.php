@@ -47,7 +47,7 @@
 		// adjust full width for column padding and output length etc
 		$full_width = array_sum($column_lengths) - $line_length_offset + 1 + ( count($column_lengths) * strlen(PDebug::$GENERIC_CELL_JOINER) );
 
-		$divider_row = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM), array(PDebug::$CURRENT_INDENT_STRING, '', '', str_repeat(PDebug::$GENERIC_BORDER_CHARACTER, $full_width + $total_line_padding)), PDebug::$GENERIC_LINE);
+		$divider_row = str_replace(array(PDebug::WC_INDENT, PDebug::WC_TYPE, PDebug::WC_INFO, PDebug::WC_SUBITEM), array(PDebug::$CURRENT_INDENT_STRING, '', '', str_repeat(PDebug::$GENERIC_BORDER_CHARACTER, $full_width + $line_length_offset)), PDebug::$GENERIC_LINE);
 
 		$resource_footer_rows[] = $divider_row;
 		array_unshift($resource_header_rows, $divider_row);

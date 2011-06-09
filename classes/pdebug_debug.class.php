@@ -310,7 +310,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				PDebug::goInternal();
 			}
 
-			$store_at = null;
+			$store_call = null;
 			$compute_since = null;
 			$time_since_output = null;		// for formatBench to display time since stamp
 			if (is_array($tag)) {
