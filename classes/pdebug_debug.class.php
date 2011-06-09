@@ -1249,18 +1249,18 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			foreach ($times as $time) {
 				if ($time == PDebug::$DEFER_COUNT) {
 					PDebug::doOutput(PDebug::dump($args));
+					PDebug::flush();
 				}
 			}
 			PDebug::$DEFER_COUNT++;
-			PDebug::flush();
 		}
 		// only debug arguments if the first argument evaluates to true
 		function conditionaldump() {
 			$args = func_get_args();
 			if (array_shift($args)) {
 				PDebug::doOutput(PDebug::dump($args));
+				PDebug::flush();
 			}
-			PDebug::flush();
 		}
 	}
 
