@@ -330,6 +330,12 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			$benchData = PDebug::getBench(true, $compute_since, $store_call);
 			$benchData['since'] = $time_since_output;
 
+			// when passing null this just resets the timer without outputting anything
+			if ($tag === null) {
+				PDebug::goExternal();
+				return '';
+			}
+
 			$out = PDebug::formatBench($tag, $benchData, true, $vars);
 
 			// print PDebug headers / footers if this is not an external (direct) function call
