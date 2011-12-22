@@ -1,10 +1,10 @@
 <?php
 $t = array(
-	
+
 	'COMMON_HEADER'	=> <<<EOT
 <style type="text/css">
 /* general debugger layout */
-	.PDebug { white-space: normal; font-family: "trebuchet ms",helvetica,tahoma,sans-serif; font-size: 10px; line-height: 11px; background: #F0F6FF; margin: 0; padding: 3px; border-radius: 5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; border: 1px solid #E18E03; margin: 0px; display: block; }
+	.PDebug { white-space: normal; font-family: "trebuchet ms",helvetica,tahoma,sans-serif; font-size: 10px; line-height: 11px; background: #F0F6FF; margin: 0; padding: 3px; border-radius: 5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; border: 1px solid #E18E03; margin: 0px; display: block; text-align: left; }
 	.PDebug li { list-style: none; line-height: 18px; }
 	.PDebug ul { white-space: normal; padding: 0; margin: 0 2em; min-width: 200px; }
 	.PDebug .info { font-weight: bold; color: #E18E03; }
@@ -153,7 +153,7 @@ var PDebug = {
 		}
 		e.stopPropagation();		// prevent node from toggling as well
 	},
-	
+
 // NODE TOGGLING
 
 // array of nodes that had their onclick events triggered by a click
@@ -217,7 +217,7 @@ var PDebug = {
 	flashNode: function(el) {
 		// clear the old timer & reset old element if it's still flashing
 		if (PDebug.flash_timer) {
-			window.clearInterval(PDebug.flash_timer);													
+			window.clearInterval(PDebug.flash_timer);
 			PDebug.last_flashing_el.style.backgroundColor = PDebug.last_flashing_color;
 		}
 		// if parent node is a UL, it's not a root dump so we flash its parent row
@@ -366,5 +366,5 @@ EOT
 		'STACK_LINE'		=> 		'<li style="background: %cs;">&nbsp;%p : <ul>%o</ul>%t%f( <ul>%s</ul> )</li>' . "\n",
 		'STACK_JOINER'		=> 		', ',
 );
-	
+
 ?>
