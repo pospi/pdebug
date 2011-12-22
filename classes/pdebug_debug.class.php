@@ -1189,6 +1189,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 	if ($_PDEBUG_OPTIONS['use_error_handler']) {
 		PDebug::$USE_ERROR_HANDLER = true;
 		set_error_handler(array('PDebug', '__error'));
+		set_exception_handler(array('PDebug', '__error'));
 		register_shutdown_function(array('PDebug', '__checkExitStatus'));
 	}
 
