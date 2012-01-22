@@ -1025,7 +1025,7 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				$line_number	= $arg_list[3];
 				$data			= $arg_list[4];
 			} else {
-				list($type, $error_message, $file_name, $line_number, $data) = PDebug::__exception($arg_list[0]);
+				list($type, $error_message, $file_name, $line_number, $trace) = PDebug::__exception($arg_list[0]);
 			}
 
 			if ($type & PDebug::$IGNORE_ERRLEVELS) {
@@ -1054,8 +1054,11 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			// create error message
 			if (array_key_exists($type, $error_types)) {
 				$err = $error_types[$type];
+				// pretend we're from a backtrace call so we don't get headers output
+				$trace = PDebug::$USE_STACK_TRACE ? PDebug::trace(true) : '';
 			} else {
 				$err = 'CAUGHT EXCEPTION';
+				$trace = PDebug::readableBacktrace($trace, true);
 			}
 
 			if (PDebug::__errorIsNonCritical($type)) {
@@ -1063,10 +1066,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			} else {
 				$error_index = PDebug::$ERROR_COUNT++;
 			}
-			$err_msg = str_replace(array(PDebug::WC_INDENT, PDebug::WC_ERROR, PDebug::WC_PATH, PDebug::WC_ERROR_MESSAGE, PDebug::WC_COUNTER), array(PDebug::$CURRENT_INDENT_STRING, $err, PProtocolHandler::String_translatePathsFor($file_name, $line_number), $error_message, $error_index), PDebug::$ERROR_FORMAT);
 
-			// pretend we're from a backtrace call so we don't get headers output
-			$trace = PDebug::$USE_STACK_TRACE ? PDebug::trace(true) : '';
+			$err_msg = str_replace(array(PDebug::WC_INDENT, PDebug::WC_ERROR, PDebug::WC_PATH, PDebug::WC_ERROR_MESSAGE, PDebug::WC_COUNTER), array(PDebug::$CURRENT_INDENT_STRING, $err, PProtocolHandler::String_translatePathsFor($file_name, $line_number), $error_message, $error_index), PDebug::$ERROR_FORMAT);
 
 			list($header_extra, $footer_extra) = PDebug::verifyHeaderIncludes(PDebug::$HEADER_BLOCK, PDebug::$FOOTER_BLOCK);
 
