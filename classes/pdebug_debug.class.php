@@ -764,6 +764,13 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			// cast to array to iterate over private properties
 			$avar = (array)$var;
 
+			// show line and file for PHP 5.3 closures
+			if ($var instanceof Closure && class_exists('ReflectionFunction')) {
+				$closure = new ReflectionFunction($var);
+				$avar['__FILE__'] = $closure->getFileName();
+				$avar['__LINE__'] = $closure->getStartLine();
+			}
+
 			// work out the longest object member string for plaintext padding
 			$val_pad_length = 0;
 			$type_pad_length = 0;
