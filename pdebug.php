@@ -4,6 +4,27 @@
 	----------------------------------------------------------------------------
 	Include IDE package files. No namespace pollution whatsoever, aside from
 	PDebug class and function helpers (if enabled).
+
+	Version History:
+		3.1 -	add ability to filter out errors based on path
+				various bugfixes
+
+		3.0 (Final) - First public release
+
+		3.0.05a - Internal alpha test phase
+			:--FLUXATION HAPPENS--:
+
+		2.0 -	upgraded for PHP5
+				proper object iteration
+				With thanks / help from:
+					Jason Friedland <jfriedland@vision6.com.au>
+					Jamie Curnow	<jc@jc21.com>
+					Ben Kuskopf		<benkuskopf@hotmail.com>
+
+		1.0 -	basic functionality
+				string-based print_r() behaviour
+				With thanks / help from:
+					Nick Fisher 	<fisher@spadgos.com>
 	----------------------------------------------------------------------------
 	Copyright (c) 2008 Sam Pospischil <pospi@spadgos.com>
   ===============================================================================*/

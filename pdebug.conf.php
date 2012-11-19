@@ -1,28 +1,8 @@
 <?php
 /*================================================================================
 	pdebug - configuration options
-	----------------------------------------------------------------------------
-	[ pdebug configuration vars ]
 
-	Version History:
-		3.0 (Final) - First public release
-
-		3.0.05a - Internal alpha test phase
-			:--FLUXATION HAPPENS--:
-
-		2.0 -	upgraded for PHP5
-				proper object iteration
-				With thanks / help from:
-					Jason Friedland <jfriedland@vision6.com.au>
-					Jamie Curnow	<jc@jc21.com>
-					Ben Kuskopf		<benkuskopf@hotmail.com>
-
-		1.0 -	basic functionality
-				string-based print_r() behaviour
-				With thanks / help from:
-					Nick Fisher 	<fisher@spadgos.com>
-
-	----------------------------------------------------------------------------
+	https://github.com/pospi/pdebug
 	Copyright (c) 2008 Sam Pospischil <pospi@spadgos.com>
   ===============================================================================*/
 
