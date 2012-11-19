@@ -69,6 +69,9 @@
 			// sets which error levels should be completely ignored by the debugger.
 			'ignore_types'						=> E_NOTICE | E_STRICT,
 
+			// an array of filesystem folder names to ignore any error output from. Use to suppress log spam from older code libraries.
+			'ignore_paths'						=> array(),
+
 			// Set email subjects. %h = hostname, %e = error count, %w = warning count
 			'email_subject_output'				=> 'pDebug - %h',							// no errors or warnings present, manual debug output only
 			'email_subject_warnings'			=> 'pDebug [%w warnings] - %h',				// warnings (but no errors) present

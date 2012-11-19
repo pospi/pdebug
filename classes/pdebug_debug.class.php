@@ -218,6 +218,19 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		//============================================================================================
 
+		static $ignoreErrorPaths = array();
+
+		/**
+		 * Any errors detected in files that fall within paths set here will
+		 * not be logged. This is so you can have deprecated/non-strict code
+		 * in libraries and still use it without creating log spam.
+		 */
+		public function ignoreErrorsFrom($path) {
+			PDebug::$ignoreErrorPaths[] = realpath($path);
+		}
+
+		//============================================================================================
+
 		/**
 		 *	Dumps a variable(s) information recursively
 		 *
@@ -1039,6 +1052,10 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				return;
 			}
 
+			foreach (PDebug::$ignoreErrorPaths as $path) {
+				if (strpos($file_name, $path) === 0) return;
+			}
+
 			$error_types = array (
 				E_ERROR				=> 'ERROR',
 				E_WARNING			=> 'WARNING',
@@ -1199,6 +1216,13 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		set_error_handler(array('PDebug', '__error'));
 		set_exception_handler(array('PDebug', '__error'));
 		register_shutdown_function(array('PDebug', '__checkExitStatus'));
+
+		// setup any configured paths to exclude from error reporting
+		if ($_PDEBUG_OPTIONS['ignore_paths']) {
+			foreach ($_PDEBUG_OPTIONS['ignore_paths'] as $path) {
+				PDebug::ignoreErrorsFrom($path);
+			}
+		}
 	}
 
 	// set emailer callback, if desired
