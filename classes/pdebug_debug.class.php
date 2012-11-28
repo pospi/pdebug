@@ -1384,4 +1384,3 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 	PDebug::outputAs(PProtocolHandler::$CURRENT_OUTPUT_MODE);
 
 }
-?>

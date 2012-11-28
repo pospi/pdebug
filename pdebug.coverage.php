@@ -45,5 +45,3 @@ function __pdebug_show_coverage() {
 }
 
 register_shutdown_function('__pdebug_show_coverage');
-
-?>

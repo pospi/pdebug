@@ -126,4 +126,3 @@
 	} else {
 		unset($_PDEBUG_OPTIONS);		// unset this separately so we don't have to make a temporary variable for $show_startup_stats
 	}
-?>

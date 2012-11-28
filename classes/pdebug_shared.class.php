@@ -423,5 +423,3 @@
 	if (isset($_PDEBUG_OPTIONS['email_subject_output'])) {
 		PProtocolHandler::$EMAIL_SUBJECT_NORM = $_PDEBUG_OPTIONS['email_subject_output'];
 	}
-
-?>

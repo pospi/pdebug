@@ -7,19 +7,19 @@
 	----------------------------------------------------------------------------
 	Copyright (c) 2008 Sam Pospischil <pospi@spadgos.com>
   ===============================================================================*/
-  
+
 function memory_get_usage() {
 
 	// YOU MUST REMOVE THIS LINE TO USE MEMORY LOGGING ON WINDOWS HOSTS. IT
-	// IS DISABLED BY DEFAULT DUE TO UNRELIABILITY OF THE exec() COMMAND ON 
+	// IS DISABLED BY DEFAULT DUE TO UNRELIABILITY OF THE exec() COMMAND ON
 	// WINDOWS SERVERS. BASICALLY - IF YOU WANT THIS, IT WILL REQUIRE CONFIGURATION
 	return 0;
-	
+
 	// Win XP Pro SP2, Win 2003 Server
 	// Will work for Win2000 with pslist.exe - see http://php.net/manual/en/function.memory-get-usage.php#54642 and http://technet.microsoft.com/en-us/sysinternals/bb896682
 	if (substr(PHP_OS, 0, 3) == 'WIN') {
 		$output = array();
-		
+
 		$pslist = dirname(__FILE__) . '\resources\PsList.exe';
 		if (file_exists($pslist)) {
 			if (version_compare(PHP_VERSION, '5.3.0') == -1) {
@@ -41,5 +41,3 @@ function memory_get_usage() {
 		return $output[1] * 1024;
 	}
 }
-?>
- 

@@ -132,5 +132,3 @@
 
 		'DEBUGGER_THEMES' => array()		// will contain 'html', 'text' and 'json'
 	);
-
-?>
