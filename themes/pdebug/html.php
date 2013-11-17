@@ -93,6 +93,8 @@ $t = array(
 	.PDebug .ERROR				{ color: #F00; }
 	.PDebug .WARNING			{ color: #F70; }
 	.PDebug .NOTICE				{ color: #9F0; }
+	.PDebug .cpu				{ color: #000; font-size: 0.8em; }
+	.PDebug small				{ font-size: 0.8em; }
 /* code coverage statistics styles */
 	.PDebug .coverage h4		{ cursor: pointer; background: #D0D6DF; margin: 0; padding: 0.5em 0; }
 	.PDebug .coverage h4 span	{ color: #F70; }
@@ -345,7 +347,9 @@ EOT
 	//  - %p shows $_SERVER['PHP_SELF'], or server path of the executing script if unavailable
 	'STARTUP_STATS_FORMAT'		=>  '<li><span class="resource"><span><nobr style="cursor: default;">:pdebug:</nobr></span></span> <span class="info">loaded</span> for <span style="color: #0086CE;">%p</span>: (started in <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB, total overhead <span style="color: %ct">%t</span>s)</li>',
 	//	- %p is additionally not used in this one...
-	'INTERNAL_CALL_LOG_FORMAT'	=>  '<li onclick="PDebug.c(this);"><span class="resource"><span><nobr>:pdebug:</nobr></span></span><span class="info %i"> %i </span>: (executed in <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB)</li>',
+	'INTERNAL_CALL_LOG_FORMAT'	=>  '<li onclick="PDebug.c(this);"><span class="resource"><span><nobr>:pdebug:</nobr></span></span><span class="info %i"> %i </span> ' .
+										'<span class="cpu">[<strong>CPU:</strong> utime <span style="color: %Ccu">%Cu</span> / systime <span style="color: %Ccs">%Cs</span> (<span style="color: %Cdcu">%Cdu</span> / <span style="color: %Cdcs">%Cds</span>)]</span>: ' .
+										'<small>(rendered output in <span style="color: %cdt">%dt</span>s / <span style="color: %cdm">%dm</span>KB)</small></li>',
 
 	//  %n =	error number (since script start)
 	//	%e =	error type

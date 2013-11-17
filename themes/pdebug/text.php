@@ -1,6 +1,6 @@
 <?php
 $t = array(
-	
+
 	'COMMON_HEADER'	=> '',
 
 	// Generic wildcards:
@@ -82,7 +82,7 @@ $t = array(
 	//  - %p shows $_SERVER['PHP_SELF'], or server path of the executing script if unavailable
 	'STARTUP_STATS_FORMAT'		=>  "[[pdebug loaded]] for %p (in %dt sec / %dm KB, overhead %t sec)\n",
 	//	- %p is additionally not used in this one...
-	'INTERNAL_CALL_LOG_FORMAT'	=>  "[pdebug invoked: %i] : (executed in %dt sec / %dm KB)\n",
+	'INTERNAL_CALL_LOG_FORMAT'	=>  "[pdebug invoked: %i] utime %Cu / systime %Cs (%Cdu / %Cds) : (rendered in %dt sec / %dm KB)\n",
 
 	//  %n =	error number (since script start)
 	//	%e =	error type
@@ -102,5 +102,5 @@ $t = array(
 		'STACK_LINE'		=> 		"  [%i] %p : %c%t%f(%s)\n",
 		'STACK_JOINER'		=> 		", ",
 );
-	
+
 ?>
