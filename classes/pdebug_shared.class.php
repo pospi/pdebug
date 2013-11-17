@@ -263,10 +263,10 @@
 		 */
 		public static function Color_getColorBetween($low, $high, $value) {
 
-			$low_val = $low[0];
-			$low = $low[1];
-			$high_val = $high[0] > 0 ? $high[0] - 1 : $high[0];
-			$high = $high[1];
+			$low_val = (double)$low[0];
+			$low = (double)$low[1];
+			$high_val = (double)$high[0];
+			$high = (double)$high[1];
 
 			// clamp the value, first
 			$value = max(min($value, $high_val), $low_val);
