@@ -147,6 +147,15 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		const WC_BENCH_TIMEDIFF_C	= '%cdt';
 		const WC_BENCH_MEMDIFF_C 	= '%cdm';
 
+		const WC_BENCH_CPU_USER			= '%Cu';
+		const WC_BENCH_CPU_USER_C		= '%Ccu';
+		const WC_BENCH_CPU_SYS			= '%Cs';
+		const WC_BENCH_CPU_SYS_C		= '%Ccs';
+		const WC_BENCH_CPU_USER_DIFF	= '%Cdu';
+		const WC_BENCH_CPU_SYS_DIFF		= '%Cds';
+		const WC_BENCH_CPU_USER_DIFF_C	= '%Cdcu';
+		const WC_BENCH_CPU_SYS_DIFF_C	= '%Cdcs';
+
 		// Debugger wildcards:
 		const WC_TYPE 			= '%t';
 		const WC_VAR 			= '%v';
@@ -184,8 +193,10 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 		static $FLUSH_ON_OUTPUT = true;
 
-		static $BENCHMARKER_TIME_VALUE_HIGH = 1;
+		static $BENCHMARKER_TIME_VALUE_HIGH = 1.0;
 		static $BENCHMARKER_TIME_VALUE_LOW	= 0.0001;
+		static $BENCHMARKER_CPU_VALUE_HIGH = 1.0;
+		static $BENCHMARKER_CPU_VALUE_LOW	= 0.0001;
 		static $BENCHMARKER_MEM_VALUE_HIGH 	= 1048576;
 		static $BENCHMARKER_MEM_VALUE_LOW	= 512;
 		static $BENCHMARKER_COLOR_HIGH		= 0xFF0000;
@@ -205,6 +216,10 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 		static $PDEBUG_PREV_MEM = 0;
 		static $LAST_CALL_TIME = 0;
 		static $LAST_MEM_USAGE = 0;
+
+		static $PDEBUG_BENCH_CPU = array();		// CPU usage can also be tracked separately from other benchmarking if desirable
+		static $PDEBUG_CPU_BASELINE;
+		static $PDEBUG_PREV_CPU;
 
 		static $DEFER_COUNT = 0;
 		static $ERROR_COUNT = 0;
@@ -410,11 +425,55 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 				);
 			}
 
+			// combine with CPU data
+			$benchdata = array_merge(array(
+				'm' => $mem_usage, 't' => $this_call, 'dm' => $mem_diff, 'dt' => $time_diff
+			), self::getCPUUsage(true, $since, $store));
+
 			if (!$internal_call) {
 				PDebug::goExternal();
 			}
 
-			return array('m' => $mem_usage, 't' => $this_call, 'dm' => $mem_diff, 'dt' => $time_diff);
+			return $benchdata;
+		}
+
+		public static function getCPUUsage($internal_call = false, &$since = null, $store = null)
+		{
+			if (!$internal_call) {
+				PDebug::goInternal();
+			}
+
+			$data = getrusage();
+			$thisUsage = array((double)($data['ru_utime.tv_sec'] + $data['ru_utime.tv_usec'] / 1000000), (double)($data['ru_stime.tv_sec'] + $data['ru_stime.tv_usec'] / 1000000));
+
+			$thisUsage[0] -= PDebug::$PDEBUG_CPU_BASELINE[0];
+			$thisUsage[1] -= PDebug::$PDEBUG_CPU_BASELINE[1];
+
+			if (!isset(PDebug::$PDEBUG_PREV_CPU)) {
+				PDebug::$PDEBUG_PREV_CPU = $thisUsage;
+			}
+
+			if (!$since) {
+				list($previousUsr, $previousSys) = PDebug::$PDEBUG_PREV_CPU;
+				PDebug::$PDEBUG_PREV_CPU = $thisUsage;
+			} else {
+				@list($previousUsr, $previousSys) = $since;
+				$since[0] = $thisUsage[0];
+				$since[1] = $thisUsage[1];
+			}
+
+			if (is_string($store)) {
+				PDebug::$PDEBUG_BENCH_CPU[$store] = $thisUsage;
+			}
+
+			list($utime, $stime) = $thisUsage;
+			$data = array('cu' => $utime, 'cs' => $stime, 'dcu' => $utime - $previousUsr, 'dcs' => $stime - $previousSys);
+
+			if (!$internal_call) {
+				PDebug::goExternal();
+			}
+
+			return $data;
 		}
 
 		public static function outputAs($mode) {
@@ -508,16 +567,28 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 
 			$mem_usage = PDebug::__shadedMem($bench_stats['m']);
 			$this_call = PDebug::__shadedTime($bench_stats['t'] - PDebug::$PDEBUG_BENCH_START);
+			$this_cpu_u = PDebug::__shadedCPU($bench_stats['cu']);
+			$this_cpu_s = PDebug::__shadedCPU($bench_stats['cs']);
 			$mem_diff  = PDebug::__shadedMem($bench_stats['dm']);
 			$time_diff = PDebug::__shadedTime($bench_stats['dt']);
+			$cpu_diff_u = PDebug::__shadedCPU($bench_stats['dcu']);
+			$cpu_diff_s = PDebug::__shadedCPU($bench_stats['dcs']);
 			$mem_usage_c = $mem_usage[1];
 			$this_call_c = $this_call[1];
+			$this_cpu_u_c = $this_cpu_u[1];
+			$this_cpu_s_c = $this_cpu_s[1];
 			$mem_diff_c  = $mem_diff[1];
 			$time_diff_c = $time_diff[1];
+			$cpu_diff_u_c = $cpu_diff_u[1];
+			$cpu_diff_s_c = $cpu_diff_s[1];
 			$mem_usage = $mem_usage[0];
 			$this_call = $this_call[0];
+			$this_cpu_u = $this_cpu_u[0];
+			$this_cpu_s = $this_cpu_s[0];
 			$mem_diff  = $mem_diff[0];
 			$time_diff = $time_diff[0];
+			$cpu_diff_u = $cpu_diff_u[0];
+			$cpu_diff_s = $cpu_diff_s[0];
 
 			$time_relative = isset($bench_stats['since']) ? $bench_stats['since'] : null;
 
@@ -545,6 +616,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 					array(PDebug::WC_INDENT, PDebug::WC_INFO, PDebug::WC_PATH,
 						PDebug::WC_BENCH_TIME, PDebug::WC_BENCH_MEM, PDebug::WC_BENCH_TIMEDIFF, PDebug::WC_BENCH_MEMDIFF,
 						PDebug::WC_BENCH_TIME_C, PDebug::WC_BENCH_MEM_C, PDebug::WC_BENCH_TIMEDIFF_C, PDebug::WC_BENCH_MEMDIFF_C,
+						PDebug::WC_BENCH_CPU_USER, PDebug::WC_BENCH_CPU_SYS, PDebug::WC_BENCH_CPU_USER_DIFF, PDebug::WC_BENCH_CPU_SYS_DIFF,
+						PDebug::WC_BENCH_CPU_USER_C, PDebug::WC_BENCH_CPU_SYS_C, PDebug::WC_BENCH_CPU_USER_DIFF_C, PDebug::WC_BENCH_CPU_SYS_DIFF_C,
 						PDebug::WC_SUBITEM, PDebug::WC_COUNTER),
 					array(
 						PDebug::$CURRENT_INDENT_STRING,
@@ -552,6 +625,8 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 						$trace_call_location_string,
 						$this_call, $mem_usage, $time_diff, $mem_diff,
 						$this_call_c, $mem_usage_c, $time_diff_c, $mem_diff_c,
+						$this_cpu_u, $this_cpu_s, '+' . $cpu_diff_u, '+' . $cpu_diff_s,
+						$this_cpu_u_c, $this_cpu_s_c, $cpu_diff_u_c, $cpu_diff_s_c,
 						$var_extra,
 						(!$diffs_only ? PDebug::$BENCH_COUNT++ : ''),
 					),
@@ -590,6 +665,14 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			return array($time, $color);
 		}
 
+		public static function __shadedCPU($time) {
+			$color = PProtocolHandler::Color_getColorBetween(array(PDebug::$BENCHMARKER_CPU_VALUE_LOW, PDebug::$BENCHMARKER_COLOR_LOW), array(PDebug::$BENCHMARKER_CPU_VALUE_HIGH, PDebug::$BENCHMARKER_COLOR_HIGH), $time);
+
+			$time = number_format($time, 6, '.', '');
+
+			return array($time, $color);
+		}
+
 		//====================================================================================================================================
 
 		/**
@@ -623,12 +706,14 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 			$dm = memory_get_usage() - PDebug::$LAST_MEM_USAGE;
 
 			if (PDebug::$SHOW_INTERNAL_STATISTICS && $out !== null) {
-				$dump_stats = array(
+				$cpustats = self::getCPUUsage(true);
+
+				$dump_stats = array_merge(array(
 					't'	=> microtime(true),
 					'm'	=> memory_get_usage(),
 					'dt'=> $dt,
 					'dm'=> $dm,
-				);
+				), $cpustats);
 				$out = PDebug::formatBench($tag, $dump_stats, true, null, true) . $out;
 			}
 
@@ -1379,6 +1464,11 @@ if ($_PDEBUG_OPTIONS['use_debugger']) {
 	if (isset($_PDEBUG_OPTIONS['stack_color_oldest'])) {
 		PDebug::$STACK_COLOR_OLDEST = (int)$_PDEBUG_OPTIONS['stack_color_oldest'];
 	}
+
+	// set baseline CPU data
+	$data = getrusage();
+	PDebug::$PDEBUG_CPU_BASELINE = array((double)($data['ru_utime.tv_sec'] + $data['ru_utime.tv_usec'] / 1000000), (double)($data['ru_stime.tv_sec'] + $data['ru_stime.tv_usec'] / 1000000));
+	unset($data);
 
 	// load theme vars into class, to reduce access overhead - speed is more important than this minor mem usage
 	PDebug::outputAs(PProtocolHandler::$CURRENT_OUTPUT_MODE);
